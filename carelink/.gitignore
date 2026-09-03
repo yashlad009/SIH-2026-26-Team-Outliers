@@ -1,0 +1,47 @@
+# ── Secrets & credentials ─────────────────────────────────────────────────
+google-services.json
+GoogleService-Info.plist
+*.keystore
+*.jks
+key.properties
+android/key.properties
+.env
+.env.*
+secrets.dart
+lib/firebase_options.dart
+
+# ── Flutter / Dart ─────────────────────────────────────────────────────────
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+build/
+*.g.dart
+*.freezed.dart
+pubspec.lock
+
+# ── Android ───────────────────────────────────────────────────────────────
+android/.gradle/
+android/local.properties
+android/captures/
+android/generatedConfigs/
+**/android/app/google-services.json
+
+# ── iOS ───────────────────────────────────────────────────────────────────
+ios/Flutter/flutter_export_environment.sh
+ios/Pods/
+ios/.symlinks/
+**/ios/GoogleService-Info.plist
+
+# ── IDE ───────────────────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+.DS_Store
+Thumbs.db
+
+# ── Logs ──────────────────────────────────────────────────────────────────
+*.log
+crash.txt

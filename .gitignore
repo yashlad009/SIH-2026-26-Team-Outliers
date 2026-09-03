@@ -1,0 +1,14 @@
+# ── Secrets ───────────────────────────────────────────────────────────────
+google-services.json
+GoogleService-Info.plist
+*.keystore
+*.jks
+key.properties
+.env
+.env.*
+secrets.dart
+carelink/lib/firebase_options.dart
+
+# ── OS ────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
