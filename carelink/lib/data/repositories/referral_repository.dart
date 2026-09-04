@@ -18,18 +18,23 @@ class ReferralRepository {
   Stream<List<ReferralModel>> watchReferralsByPatient(String patientId) {
     return _col
         .where('patientId', isEqualTo: patientId)
-        .orderBy('createdAt', descending: true)
-        .snapshots()
-        .map((s) => s.docs.map(ReferralModel.fromFirestore).toList());
+        .snapshots(includeMetadataChanges: true)
+        .map((s) {
+      final list = s.docs.map(ReferralModel.fromFirestore).toList();
+      list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return list;
+    });
   }
 
   Stream<List<ReferralModel>> watchActiveReferrals() {
     return _col
         .where('currentStatus', whereNotIn: ['completed', 'dropped'])
-        .orderBy('currentStatus')
-        .orderBy('createdAt', descending: true)
-        .snapshots()
-        .map((s) => s.docs.map(ReferralModel.fromFirestore).toList());
+        .snapshots(includeMetadataChanges: true)
+        .map((s) {
+      final list = s.docs.map(ReferralModel.fromFirestore).toList();
+      list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return list;
+    });
   }
 
   Future<ReferralModel?> getReferral(String id) async {

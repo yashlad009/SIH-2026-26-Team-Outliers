@@ -18,8 +18,11 @@ class DiagnosticRepository {
   Stream<List<DiagnosticTestModel>> watchTestsByPatient(String patientId) {
     return _col
         .where('patientId', isEqualTo: patientId)
-        .orderBy('orderedAt', descending: true)
-        .snapshots()
-        .map((s) => s.docs.map(DiagnosticTestModel.fromFirestore).toList());
+        .snapshots(includeMetadataChanges: true)
+        .map((s) {
+      final list = s.docs.map(DiagnosticTestModel.fromFirestore).toList();
+      list.sort((a, b) => b.orderedAt.compareTo(a.orderedAt));
+      return list;
+    });
   }
 }

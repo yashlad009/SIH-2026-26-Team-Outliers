@@ -18,9 +18,12 @@ class FollowUpRepository {
   Stream<List<FollowUpTaskModel>> watchTasksByChw(String chwUid) {
     return _col
         .where('assignedToUid', isEqualTo: chwUid)
-        .orderBy('dueDate')
-        .snapshots()
-        .map((s) => s.docs.map(FollowUpTaskModel.fromFirestore).toList());
+        .snapshots(includeMetadataChanges: true)
+        .map((s) {
+      final list = s.docs.map(FollowUpTaskModel.fromFirestore).toList();
+      list.sort((a, b) => a.dueDate.compareTo(b.dueDate));
+      return list;
+    });
   }
 
   Future<void> markDone(String taskId) async {

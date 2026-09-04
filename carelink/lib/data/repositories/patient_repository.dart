@@ -46,9 +46,12 @@ class PatientRepository {
   Stream<List<TriageResultModel>> watchTriageResults(String patientId) {
     return _triageCol
         .where('patientId', isEqualTo: patientId)
-        .orderBy('assessedAt', descending: true)
         .snapshots(includeMetadataChanges: true)
-        .map((s) => s.docs.map(TriageResultModel.fromFirestore).toList());
+        .map((s) {
+      final list = s.docs.map(TriageResultModel.fromFirestore).toList();
+      list.sort((a, b) => b.assessedAt.compareTo(a.assessedAt));
+      return list;
+    });
   }
 
   Future<TriageResultModel?> getLatestTriage(String patientId) async {

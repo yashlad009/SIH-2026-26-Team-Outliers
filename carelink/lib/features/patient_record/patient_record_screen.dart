@@ -283,15 +283,21 @@ class _PatientHeaderCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(patient.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                         fontWeight: FontWeight.w700,
                         fontSize: 17,
                         color: AppColors.primaryDark)),
                 Text(
                     '${patient.age}y · ${patient.gender.label} · ${patient.bloodGroup ?? 'Blood group unknown'}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                         fontSize: 13, color: AppColors.textSecondary)),
                 Text('${patient.village}, ${patient.district}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                         fontSize: 13, color: AppColors.textSecondary)),
                 if (patient.chronicConditions.isNotEmpty) ...[
@@ -336,10 +342,14 @@ class _TriageTimelineCard extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text('Triage Assessment',
-                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-            const Spacer(),
+            const Flexible(
+              child: Text('Triage Assessment',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                  overflow: TextOverflow.ellipsis),
+            ),
+            const SizedBox(width: 6),
             RiskBadge(riskLevel: triage.riskLevel, showScore: true, score: triage.riskScore),
           ],
         ),
@@ -409,10 +419,14 @@ class _ConsultTimelineCard extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text('Teleconsultation',
-                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-            const Spacer(),
+            const Flexible(
+              child: Text('Teleconsultation',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                  overflow: TextOverflow.ellipsis),
+            ),
+            const SizedBox(width: 6),
             _statusBadge(consult.status),
           ],
         ),
@@ -482,10 +496,14 @@ class _ReferralTimelineCard extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text('Referral',
-                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-            const Spacer(),
+            const Flexible(
+              child: Text('Referral',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                  overflow: TextOverflow.ellipsis),
+            ),
+            const SizedBox(width: 6),
             _statusChip(referral.currentStatus),
           ],
         ),
@@ -525,10 +543,14 @@ class _DiagnosticTimelineCard extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text('Diagnostic Test',
-                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-            const Spacer(),
+            const Flexible(
+              child: Text('Diagnostic Test',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                  overflow: TextOverflow.ellipsis),
+            ),
+            const SizedBox(width: 6),
             _statusChip(test.status),
           ],
         ),

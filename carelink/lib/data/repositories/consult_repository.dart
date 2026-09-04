@@ -11,25 +11,34 @@ class ConsultRepository {
   Stream<List<ConsultRequestModel>> watchPendingConsults() {
     return _col
         .where('status', isEqualTo: 'pending')
-        .orderBy('createdAt', descending: false)
-        .snapshots()
-        .map((s) => s.docs.map(ConsultRequestModel.fromFirestore).toList());
+        .snapshots(includeMetadataChanges: true)
+        .map((s) {
+      final list = s.docs.map(ConsultRequestModel.fromFirestore).toList();
+      list.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+      return list;
+    });
   }
 
   Stream<List<ConsultRequestModel>> watchConsultsByChw(String chwUid) {
     return _col
         .where('chwUid', isEqualTo: chwUid)
-        .orderBy('createdAt', descending: true)
-        .snapshots()
-        .map((s) => s.docs.map(ConsultRequestModel.fromFirestore).toList());
+        .snapshots(includeMetadataChanges: true)
+        .map((s) {
+      final list = s.docs.map(ConsultRequestModel.fromFirestore).toList();
+      list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return list;
+    });
   }
 
   Stream<List<ConsultRequestModel>> watchConsultsByPatient(String patientId) {
     return _col
         .where('patientId', isEqualTo: patientId)
-        .orderBy('createdAt', descending: true)
-        .snapshots()
-        .map((s) => s.docs.map(ConsultRequestModel.fromFirestore).toList());
+        .snapshots(includeMetadataChanges: true)
+        .map((s) {
+      final list = s.docs.map(ConsultRequestModel.fromFirestore).toList();
+      list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return list;
+    });
   }
 
   Future<ConsultRequestModel?> getConsult(String id) async {
