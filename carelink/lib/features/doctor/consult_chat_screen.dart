@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:uuid/uuid.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/utils/date_formatters.dart';
 import '../../core/widgets/app_scaffold.dart';
@@ -122,9 +121,15 @@ class _ConsultChatScreenState extends ConsumerState<ConsultChatScreen> {
 
     return AppScaffold(
       appBar: AppBar(
-        title: Text(widget.consult.patientName),
-        subtitle: Text(widget.consult.status.label,
-            style: const TextStyle(color: Colors.white70, fontSize: 12)),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(widget.consult.patientName),
+            Text(widget.consult.status.label,
+                style: const TextStyle(color: Colors.white70, fontSize: 12)),
+          ],
+        ),
         actions: [
           // Video call placeholder
           IconButton(

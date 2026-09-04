@@ -4,6 +4,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/widgets/app_scaffold.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/locale_provider.dart';
+import '../../models/user_model.dart';
 import '../../data/seed/seed_data.dart';
 
 class SettingsScreen extends ConsumerWidget {

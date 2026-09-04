@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_colors.dart';
-import '../../core/utils/date_formatters.dart';
 import '../../core/widgets/app_scaffold.dart';
 import '../../core/widgets/empty_state.dart';
 import '../../core/widgets/loading_state.dart';
@@ -18,7 +17,6 @@ import '../../models/referral_model.dart';
 import '../../models/diagnostic_test_model.dart';
 import '../chw_patient/triage_form_screen.dart';
 import '../chw_patient/consult_request_screen.dart';
-import '../diagnostics/pending_tests_screen.dart';
 import 'timeline_tile.dart';
 
 enum _TimelineFilter { all, vitals, consults, referrals, diagnostics }

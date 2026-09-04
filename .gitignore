@@ -12,3 +12,6 @@ carelink/lib/firebase_options.dart
 # ── OS ────────────────────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
+
+# Node dependencies
+**/node_modules/

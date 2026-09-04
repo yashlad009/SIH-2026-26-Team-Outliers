@@ -62,8 +62,6 @@ class _ReferralCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isTerminal = referral.currentStatus.isTerminal;
-
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: InkWell(

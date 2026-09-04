@@ -10,6 +10,8 @@ import '../../providers/patient_provider.dart';
 import '../../providers/consult_provider.dart';
 import '../../providers/inventory_provider.dart';
 import '../../models/patient_model.dart';
+import '../../models/consult_request_model.dart';
+import '../../models/follow_up_task_model.dart';
 import '../patient_record/patient_record_screen.dart';
 import 'patient_list_screen.dart';
 import 'new_patient_screen.dart';
@@ -114,10 +116,10 @@ class _OverviewTab extends ConsumerWidget {
     final patientsAsync = ref.watch(patientListProvider);
     final consultsAsync = user != null
         ? ref.watch(chwConsultsProvider(user!.uid))
-        : const AsyncData([]);
+        : const AsyncData<List<ConsultRequestModel>>([]);
     final tasksAsync = user != null
         ? ref.watch(followUpTasksByChwProvider(user!.uid))
-        : const AsyncData([]);
+        : const AsyncData<List<FollowUpTaskModel>>([]);
 
     final activeConsults = consultsAsync.valueOrNull
             ?.where((c) =>

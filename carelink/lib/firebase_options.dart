@@ -35,28 +35,28 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'dummy_web_key',
-    appId: 'dummy_web_app_id',
-    messagingSenderId: 'dummy_sender_id',
-    projectId: 'dummy_project',
-    authDomain: 'dummy_project.firebaseapp.com',
-    storageBucket: 'dummy_project.appspot.com',
+    apiKey: 'AIzaSyB3MHM9qcMGqSXuzIhPOHTM5p2eYeSqG7c',
+    appId: '1:1053001444815:web:2423f92978465b09a476ba',
+    messagingSenderId: '1053001444815',
+    projectId: 'sih2026-27',
+    authDomain: 'sih2026-27.firebaseapp.com',
+    storageBucket: 'sih2026-27.firebasestorage.app',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'dummy_android_key',
-    appId: 'dummy_android_app_id',
-    messagingSenderId: 'dummy_sender_id',
-    projectId: 'dummy_project',
-    storageBucket: 'dummy_project.appspot.com',
+    apiKey: 'AIzaSyB3MHM9qcMGqSXuzIhPOHTM5p2eYeSqG7c',
+    appId: '1:1053001444815:android:2423f92978465b09a476ba',
+    messagingSenderId: '1053001444815',
+    projectId: 'sih2026-27',
+    storageBucket: 'sih2026-27.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'dummy_ios_key',
-    appId: 'dummy_ios_app_id',
-    messagingSenderId: 'dummy_sender_id',
-    projectId: 'dummy_project',
-    storageBucket: 'dummy_project.appspot.com',
-    iosBundleId: 'com.example.carelink',
+    apiKey: 'AIzaSyBzFajzDnW4ygKq5SrPkBtkKgFbia3fjFQ',
+    appId: '1:1053001444815:ios:2de51e55510173dfa476ba',
+    messagingSenderId: '1053001444815',
+    projectId: 'sih2026-27',
+    storageBucket: 'sih2026-27.firebasestorage.app',
+    iosBundleId: 'com.outliers.carelink',
   );
 }

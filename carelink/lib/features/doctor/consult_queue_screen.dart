@@ -7,7 +7,6 @@ import '../../core/widgets/loading_state.dart';
 import '../../core/widgets/risk_badge.dart';
 import '../../data/repositories/consult_repository.dart';
 import '../../models/consult_request_model.dart';
-import '../../models/triage_result_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/consult_provider.dart';
 import 'consult_chat_screen.dart';
