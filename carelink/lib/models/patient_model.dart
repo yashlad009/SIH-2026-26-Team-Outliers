@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'triage_result_model.dart';
 
 enum Gender { male, female, other }
 
@@ -42,6 +43,8 @@ class PatientModel {
   final String? assignedDoctorUid;
   final DateTime registeredAt;
   final DateTime? lastVisitAt;
+  final RiskLevel? triageRisk;
+  final bool isPendingSync;
 
   const PatientModel({
     required this.id,
@@ -59,6 +62,8 @@ class PatientModel {
     this.assignedDoctorUid,
     required this.registeredAt,
     this.lastVisitAt,
+    this.triageRisk,
+    this.isPendingSync = false,
   });
 
   factory PatientModel.fromFirestore(DocumentSnapshot doc) {
@@ -79,6 +84,10 @@ class PatientModel {
       assignedDoctorUid: data['assignedDoctorUid'] as String?,
       registeredAt: (data['registeredAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       lastVisitAt: (data['lastVisitAt'] as Timestamp?)?.toDate(),
+      triageRisk: data['triageRisk'] != null
+          ? RiskLevelX.fromString(data['triageRisk'] as String)
+          : null,
+      isPendingSync: doc.metadata.hasPendingWrites,
     );
   }
 
@@ -97,6 +106,7 @@ class PatientModel {
         'assignedDoctorUid': assignedDoctorUid,
         'registeredAt': Timestamp.fromDate(registeredAt),
         'lastVisitAt': lastVisitAt != null ? Timestamp.fromDate(lastVisitAt!) : null,
+        if (triageRisk != null) 'triageRisk': triageRisk!.name,
       };
 
   String get initials {
@@ -122,6 +132,8 @@ class PatientModel {
     String? assignedDoctorUid,
     DateTime? registeredAt,
     DateTime? lastVisitAt,
+    RiskLevel? triageRisk,
+    bool? isPendingSync,
   }) =>
       PatientModel(
         id: id ?? this.id,
@@ -139,5 +151,8 @@ class PatientModel {
         assignedDoctorUid: assignedDoctorUid ?? this.assignedDoctorUid,
         registeredAt: registeredAt ?? this.registeredAt,
         lastVisitAt: lastVisitAt ?? this.lastVisitAt,
+        triageRisk: triageRisk ?? this.triageRisk,
+        isPendingSync: isPendingSync ?? this.isPendingSync,
       );
 }
+

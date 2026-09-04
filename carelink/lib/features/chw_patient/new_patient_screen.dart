@@ -7,6 +7,8 @@ import '../../data/repositories/patient_repository.dart';
 import '../../models/patient_model.dart';
 import '../../providers/auth_provider.dart';
 
+import '../../core/services/connectivity_service.dart';
+
 class NewPatientScreen extends ConsumerStatefulWidget {
   const NewPatientScreen({super.key});
 
@@ -51,9 +53,10 @@ class _NewPatientScreenState extends ConsumerState<NewPatientScreen> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _loading = true);
     try {
+      final isOnline = await ref.read(connectivityServiceProvider).isOnline;
       final user = ref.read(userProfileProvider);
       final patient = PatientModel(
-        id: '', // will be set by Firestore
+        id: '', // will be set by Firestore docRef
         name: _nameCtrl.text.trim(),
         age: int.parse(_ageCtrl.text.trim()),
         gender: _gender,
@@ -68,12 +71,23 @@ class _NewPatientScreenState extends ConsumerState<NewPatientScreen> {
       );
       await PatientRepository().createPatient(patient);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Patient registered successfully'),
-            backgroundColor: AppColors.riskLow,
-          ),
-        );
+        if (!isOnline) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                  'Patient saved offline. It will sync automatically when internet is restored.'),
+              backgroundColor: AppColors.offlineBanner,
+              duration: Duration(seconds: 4),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Patient registered successfully'),
+              backgroundColor: AppColors.riskLow,
+            ),
+          );
+        }
         Navigator.pop(context);
       }
     } catch (e) {

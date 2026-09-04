@@ -23,7 +23,7 @@ class ConnectivityBanner extends ConsumerWidget {
               SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'You are offline — showing cached data',
+                  "You're offline. Data will sync automatically when your connection is restored.",
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 12,
