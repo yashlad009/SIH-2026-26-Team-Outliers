@@ -36,7 +36,7 @@ class _ConsultRequestScreenState extends ConsumerState<ConsultRequestScreen> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _loading = true);
     try {
-      final user = ref.read(userProfileProvider);
+      final user = ref.read(activeUserProfileProvider);
       final latestTriage =
           await PatientRepository().getLatestTriage(widget.patient.id);
 
@@ -45,7 +45,7 @@ class _ConsultRequestScreenState extends ConsumerState<ConsultRequestScreen> {
         patientId: widget.patient.id,
         patientName: widget.patient.name,
         chwUid: user?.uid ?? '',
-        chwName: user?.displayName ?? '',
+        chwName: user?.displayName ?? 'CHW',
         reason: _reasonCtrl.text.trim(),
         urgency: _urgency,
         status: ConsultStatus.pending,

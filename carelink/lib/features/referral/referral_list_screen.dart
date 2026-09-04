@@ -74,7 +74,7 @@ class _ReferralListScreenState extends ConsumerState<ReferralListScreen> {
                           ? 'No referrals yet'
                           : 'No ${_selectedStatus!.label.toLowerCase()} referrals',
                       subtitle:
-                          'Referrals created by CSWs or Doctors will appear here',
+                          'Referrals created by CHWs or Doctors will appear here',
                       icon: Icons.local_hospital_outlined,
                     )
                   : RefreshIndicator(
@@ -118,7 +118,7 @@ class _ReferralCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final creatorLabel = referral.raisedByRole.toLowerCase() == 'csw' ||
             referral.raisedByRole.toLowerCase() == 'chw'
-        ? 'CSW: ${referral.raisedByName}'
+        ? 'CHW: ${referral.raisedByName}'
         : 'Doctor: ${referral.raisedByName}';
 
     return Card(

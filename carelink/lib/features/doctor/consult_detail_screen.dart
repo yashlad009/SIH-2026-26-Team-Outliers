@@ -10,6 +10,7 @@ import '../../models/consult_request_model.dart';
 import '../../models/patient_model.dart';
 import '../../models/triage_result_model.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/consult_provider.dart';
 import '../../providers/patient_provider.dart';
 import '../../providers/triage_provider.dart';
 import '../patient_record/patient_record_screen.dart';
@@ -29,8 +30,18 @@ class _ConsultDetailScreenState extends ConsumerState<ConsultDetailScreen> {
   bool _accepting = false;
 
   Future<void> _acceptConsultation() async {
-    final user = ref.read(userProfileProvider);
-    if (user == null) return;
+    final user = ref.read(activeUserProfileProvider);
+    if (user == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Error: No active doctor profile found'),
+            backgroundColor: AppColors.riskHigh,
+          ),
+        );
+      }
+      return;
+    }
 
     setState(() => _accepting = true);
     try {
@@ -39,6 +50,7 @@ class _ConsultDetailScreenState extends ConsumerState<ConsultDetailScreen> {
         doctorUid: user.uid,
         doctorName: user.displayName,
       );
+      ref.invalidate(pendingConsultsProvider);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -263,7 +275,7 @@ class _HeaderBanner extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              'Requested by CSW: ${consult.chwName}  ·  ${DateFormatters.timeAgo(consult.createdAt)}',
+              'Requested by CHW: ${consult.chwName}  ·  ${DateFormatters.timeAgo(consult.createdAt)}',
               style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
             ),
           ],

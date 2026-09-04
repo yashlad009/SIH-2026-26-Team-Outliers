@@ -35,8 +35,15 @@ class _ConsultChatScreenState extends ConsumerState<ConsultChatScreen> {
   Future<void> _send() async {
     final text = _msgCtrl.text.trim();
     if (text.isEmpty) return;
-    final user = ref.read(userProfileProvider);
-    if (user == null) return;
+    final user = ref.read(activeUserProfileProvider);
+    if (user == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error: No active user profile found')),
+        );
+      }
+      return;
+    }
 
     setState(() => _sending = true);
     _msgCtrl.clear();
@@ -114,7 +121,7 @@ class _ConsultChatScreenState extends ConsumerState<ConsultChatScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final user = ref.watch(userProfileProvider);
+    final user = ref.watch(activeUserProfileProvider);
     final messagesAsync =
         ref.watch(consultMessagesProvider(widget.consult.id));
     final isDoctor = user?.role.name == 'doctor';

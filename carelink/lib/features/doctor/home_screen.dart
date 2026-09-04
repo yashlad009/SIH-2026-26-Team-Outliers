@@ -79,7 +79,7 @@ class _DoctorOverviewTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final user = ref.watch(userProfileProvider);
+    final user = ref.watch(activeUserProfileProvider);
     final patientsAsync = ref.watch(patientListProvider);
     final pendingAsync = ref.watch(pendingConsultsProvider);
     final referralsAsync = ref.watch(allReferralsProvider);
@@ -175,7 +175,7 @@ class _DoctorOverviewTab extends ConsumerWidget {
                                     color: Colors.white,
                                     fontWeight: FontWeight.w700,
                                     fontSize: 15)),
-                            Text('Tap to review pending CSW consultation requests',
+                            Text('Tap to review pending CHW consultation requests',
                                 style: TextStyle(
                                     color: Colors.white70, fontSize: 12)),
                           ],

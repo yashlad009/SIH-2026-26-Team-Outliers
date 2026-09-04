@@ -17,6 +17,7 @@ import '../../models/referral_model.dart';
 import '../../models/diagnostic_test_model.dart';
 import '../chw_patient/triage_form_screen.dart';
 import '../chw_patient/consult_request_screen.dart';
+import '../doctor/consult_chat_screen.dart';
 import 'timeline_tile.dart';
 
 enum _TimelineFilter { all, vitals, consults, referrals, diagnostics }
@@ -36,7 +37,7 @@ class _PatientRecordScreenState
 
   @override
   Widget build(BuildContext context) {
-    final userRole = ref.watch(userProfileProvider)?.role;
+    final userRole = ref.watch(activeUserProfileProvider)?.role;
     final triageAsync =
         ref.watch(triageResultsByPatientProvider(widget.patient.id));
     final consultsAsync =
@@ -451,6 +452,25 @@ class _ConsultTimelineCard extends StatelessWidget {
                 style: const TextStyle(fontSize: 12)),
           ),
         ],
+        const SizedBox(height: 8),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => ConsultChatScreen(consult: consult),
+              ),
+            ),
+            icon: const Icon(Icons.chat_outlined, size: 16),
+            label: const Text('Open Chat', style: TextStyle(fontSize: 12)),
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+          ),
+        ),
       ],
     );
   }

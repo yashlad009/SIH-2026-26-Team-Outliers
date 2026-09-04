@@ -77,7 +77,7 @@ class ReferralModel {
   final String patientName;
   final String raisedByUid;
   final String raisedByName;
-  final String raisedByRole; // 'csw' or 'doctor'
+  final String raisedByRole; // 'chw' or 'doctor'
   final String? fromFacility;
   final String referredTo; // Hospital/facility/doctor name
   final String reason;

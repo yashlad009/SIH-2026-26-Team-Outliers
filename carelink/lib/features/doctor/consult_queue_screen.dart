@@ -25,7 +25,7 @@ class ConsultQueueScreen extends ConsumerWidget {
         if (consults.isEmpty) {
           return const EmptyState(
             message: 'No pending consultations',
-            subtitle: 'Consultation requests from CSWs will appear here',
+            subtitle: 'Consultation requests from CHWs will appear here',
             icon: Icons.queue_outlined,
           );
         }
@@ -128,7 +128,7 @@ class _ConsultCard extends ConsumerWidget {
                             Text(consult.patientName,
                                 style: const TextStyle(
                                     fontWeight: FontWeight.w700, fontSize: 15)),
-                            Text('CSW: ${consult.chwName}',
+                            Text('CHW: ${consult.chwName}',
                                 style: const TextStyle(
                                     fontSize: 12,
                                     color: AppColors.textSecondary)),
@@ -179,14 +179,21 @@ class _ConsultCard extends ConsumerWidget {
   }
 
   Future<void> _accept(BuildContext context, WidgetRef ref) async {
-    final user = ref.read(userProfileProvider);
-    if (user == null) return;
+    final user = ref.read(activeUserProfileProvider);
+    if (user == null) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Error: No active doctor profile found')));
+      }
+      return;
+    }
     try {
       await ConsultRepository().acceptConsult(
         consultId: consult.id,
         doctorUid: user.uid,
         doctorName: user.displayName,
       );
+      ref.invalidate(pendingConsultsProvider);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
             content: Text('Consultation accepted'),

@@ -15,7 +15,7 @@ class ReferralDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final creatorRole = referral.raisedByRole.toLowerCase() == 'csw' ||
             referral.raisedByRole.toLowerCase() == 'chw'
-        ? 'CSW (${referral.raisedByName})'
+        ? 'CHW (${referral.raisedByName})'
         : 'Doctor (${referral.raisedByName})';
 
     return AppScaffold(

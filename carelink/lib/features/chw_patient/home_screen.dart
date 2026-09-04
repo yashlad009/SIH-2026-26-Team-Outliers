@@ -35,7 +35,7 @@ class _ChwHomeScreenState extends ConsumerState<ChwHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final user = ref.watch(userProfileProvider);
+    final user = ref.watch(activeUserProfileProvider);
     final pages = [
       _OverviewTab(user: user),
       const PatientListScreen(embedded: true),
