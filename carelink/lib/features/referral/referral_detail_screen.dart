@@ -4,9 +4,8 @@ import '../../core/constants/app_colors.dart';
 import '../../core/utils/date_formatters.dart';
 import '../../core/widgets/app_scaffold.dart';
 import '../../core/widgets/status_stepper.dart';
-import '../../data/repositories/referral_repository.dart';
+import '../../models/consult_request_model.dart';
 import '../../models/referral_model.dart';
-import '../../providers/auth_provider.dart';
 
 class ReferralDetailScreen extends ConsumerWidget {
   final ReferralModel referral;
@@ -14,27 +13,14 @@ class ReferralDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final user = ref.watch(userProfileProvider);
-    final isDoctor = user?.role.name == 'doctor';
+    final creatorRole = referral.raisedByRole.toLowerCase() == 'csw' ||
+            referral.raisedByRole.toLowerCase() == 'chw'
+        ? 'CSW (${referral.raisedByName})'
+        : 'Doctor (${referral.raisedByName})';
 
     return AppScaffold(
       appBar: AppBar(
         title: Text('Referral — ${referral.patientName}'),
-        actions: [
-          if (isDoctor && !referral.currentStatus.isTerminal)
-            PopupMenuButton<ReferralStatus>(
-              icon: const Icon(Icons.update),
-              tooltip: 'Update Status',
-              itemBuilder: (_) => ReferralStatus.values
-                  .where((s) =>
-                      s.index > referral.currentStatus.index)
-                  .map((s) => PopupMenuItem(
-                      value: s, child: Text(s.label)))
-                  .toList(),
-              onSelected: (s) =>
-                  _updateStatus(context, ref, s, user!),
-            ),
-        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -51,7 +37,7 @@ class ReferralDetailScreen extends ConsumerWidget {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('Status',
+                        const Text('Referral Status',
                             style: TextStyle(
                                 fontWeight: FontWeight.w700,
                                 fontSize: 15)),
@@ -74,22 +60,25 @@ class ReferralDetailScreen extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Referral Details',
+                    const Text('Referral Information',
                         style: TextStyle(
                             fontWeight: FontWeight.w700, fontSize: 15)),
                     const SizedBox(height: 12),
                     _row('Patient', referral.patientName),
+                    _row('Initiated By', creatorRole),
+                    if (referral.fromFacility != null)
+                      _row('From Facility', referral.fromFacility!),
                     _row('Referred To', referral.referredTo),
-                    _row('Raised By', referral.raisedByName),
-                    _row('Created', DateFormatters.formatDateTime(referral.createdAt)),
+                    _row('Urgency', referral.urgency.label),
+                    _row('Created Date', DateFormatters.formatDateTime(referral.createdAt)),
                     if (referral.scheduledDate != null)
-                      _row('Scheduled',
+                      _row('Scheduled Date',
                           DateFormatters.formatDateTime(referral.scheduledDate)),
                     if (referral.diagnosis != null)
                       _row('Diagnosis', referral.diagnosis!),
                     _divider(),
                     const SizedBox(height: 4),
-                    const Text('Reason',
+                    const Text('Reason for Referral',
                         style: TextStyle(
                             fontWeight: FontWeight.w600,
                             color: AppColors.textSecondary,
@@ -105,7 +94,7 @@ class ReferralDetailScreen extends ConsumerWidget {
 
             // Status history
             if (referral.statusHistory.isNotEmpty) ...[
-              const Text('Status History',
+              const Text('Status History & Closed-Loop Log',
                   style: TextStyle(
                       fontWeight: FontWeight.w700, fontSize: 15)),
               const SizedBox(height: 8),
@@ -117,7 +106,7 @@ class ReferralDetailScreen extends ConsumerWidget {
                       width: 36,
                       height: 36,
                       decoration: BoxDecoration(
-                        color: _statusColor(e.status).withOpacity(0.1),
+                        color: _statusColor(e.status).withValues(alpha: 0.1),
                         shape: BoxShape.circle,
                       ),
                       child: Icon(Icons.check_circle_outline,
@@ -130,10 +119,10 @@ class ReferralDetailScreen extends ConsumerWidget {
                     subtitle: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(e.updatedByName,
+                        Text('Updated by: ${e.updatedByName}',
                             style: const TextStyle(fontSize: 12)),
-                        if (e.note != null)
-                          Text(e.note!,
+                        if (e.note != null && e.note!.isNotEmpty)
+                          Text('Note: ${e.note!}',
                               style: const TextStyle(
                                   fontSize: 11,
                                   color: AppColors.textSecondary)),
@@ -156,77 +145,6 @@ class ReferralDetailScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _updateStatus(
-    BuildContext context,
-    WidgetRef ref,
-    ReferralStatus newStatus,
-    dynamic user,
-  ) async {
-    String? note;
-    DateTime? scheduledDate;
-
-    if (newStatus == ReferralStatus.scheduled) {
-      // Ask for scheduled date
-      final picked = await showDatePicker(
-        context: context,
-        initialDate: DateTime.now().add(const Duration(days: 1)),
-        firstDate: DateTime.now(),
-        lastDate: DateTime.now().add(const Duration(days: 365)),
-      );
-      scheduledDate = picked;
-    }
-
-    if (newStatus == ReferralStatus.dropped) {
-      final noteCtrl = TextEditingController();
-      note = await showDialog<String>(
-        context: context,
-        builder: (_) => AlertDialog(
-          title: const Text('Drop Reason'),
-          content: TextField(
-              controller: noteCtrl,
-              decoration:
-                  const InputDecoration(hintText: 'Reason for dropping')),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Cancel')),
-            ElevatedButton(
-                onPressed: () => Navigator.pop(context, noteCtrl.text),
-                child: const Text('Confirm')),
-          ],
-        ),
-      );
-      if (note == null) return;
-    }
-
-    try {
-      final entry = ReferralStatusEntry(
-        status: newStatus,
-        updatedByUid: user.uid,
-        updatedByName: user.displayName,
-        note: note,
-        timestamp: DateTime.now(),
-      );
-      await ReferralRepository().updateStatus(
-        referralId: referral.id,
-        newStatus: newStatus,
-        entry: entry,
-        scheduledDate: scheduledDate,
-      );
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text('Status updated to ${newStatus.label}'),
-            backgroundColor: AppColors.riskLow));
-        Navigator.pop(context);
-      }
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error: $e')));
-      }
-    }
-  }
-
   Widget _row(String label, String value) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -234,7 +152,7 @@ class ReferralDetailScreen extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 90,
+            width: 110,
             child: Text(label,
                 style: const TextStyle(
                     fontSize: 12,
@@ -260,10 +178,10 @@ class ReferralDetailScreen extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: _statusColor(s).withOpacity(0.1),
+        color: _statusColor(s).withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(20),
         border:
-            Border.all(color: _statusColor(s).withOpacity(0.4)),
+            Border.all(color: _statusColor(s).withValues(alpha: 0.4)),
       ),
       child: Text(s.label,
           style: TextStyle(

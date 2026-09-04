@@ -22,6 +22,7 @@ class _RaiseReferralScreenState extends ConsumerState<RaiseReferralScreen> {
   final _reasonCtrl = TextEditingController();
   final _diagnosisCtrl = TextEditingController();
   String _hospital = 'Nashik Civil Hospital';
+  UrgencyLevel _urgency = UrgencyLevel.urgent;
   bool _loading = false;
 
   static const _hospitals = [
@@ -33,6 +34,7 @@ class _RaiseReferralScreenState extends ConsumerState<RaiseReferralScreen> {
     'Igatpuri Rural Hospital',
     'Trimbakeshwar PHC',
     'Dindori Sub-District Hospital',
+    'Dr. S. Mehta (Cardiology Specialist)',
     'Other (specify in reason)',
   ];
 
@@ -62,8 +64,11 @@ class _RaiseReferralScreenState extends ConsumerState<RaiseReferralScreen> {
         patientName: widget.consult.patientName,
         raisedByUid: user?.uid ?? '',
         raisedByName: user?.displayName ?? '',
+        raisedByRole: 'doctor',
+        fromFacility: user?.facilityName ?? 'PHC Ward 3',
         referredTo: _hospital,
         reason: _reasonCtrl.text.trim(),
+        urgency: _urgency,
         diagnosis: _diagnosisCtrl.text.trim().isEmpty
             ? null
             : _diagnosisCtrl.text.trim(),
@@ -150,6 +155,19 @@ class _RaiseReferralScreenState extends ConsumerState<RaiseReferralScreen> {
                     .map((h) => DropdownMenuItem(value: h, child: Text(h)))
                     .toList(),
                 onChanged: (v) => setState(() => _hospital = v!),
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<UrgencyLevel>(
+                value: _urgency,
+                decoration: const InputDecoration(
+                  labelText: 'Urgency Level *',
+                  prefixIcon: Icon(Icons.warning_amber_outlined),
+                ),
+                items: UrgencyLevel.values
+                    .map((u) => DropdownMenuItem(
+                        value: u, child: Text(u.label)))
+                    .toList(),
+                onChanged: (v) => setState(() => _urgency = v!),
               ),
               const SizedBox(height: 12),
               TextFormField(

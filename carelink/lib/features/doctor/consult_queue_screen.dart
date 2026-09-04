@@ -10,6 +10,7 @@ import '../../models/consult_request_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/consult_provider.dart';
 import 'consult_chat_screen.dart';
+import 'consult_detail_screen.dart';
 
 class ConsultQueueScreen extends ConsumerWidget {
   final bool embedded;
@@ -24,7 +25,7 @@ class ConsultQueueScreen extends ConsumerWidget {
         if (consults.isEmpty) {
           return const EmptyState(
             message: 'No pending consultations',
-            subtitle: 'Consultation requests from CHWs will appear here',
+            subtitle: 'Consultation requests from CSWs will appear here',
             icon: Icons.queue_outlined,
           );
         }
@@ -68,107 +69,111 @@ class _ConsultCard extends ConsumerWidget {
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Urgency banner
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: urgencyColor.withOpacity(0.1),
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(12)),
-              border: Border(bottom: BorderSide(color: urgencyColor.withOpacity(0.3))),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () => _openDetails(context),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Urgency banner
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: urgencyColor.withValues(alpha: 0.1),
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(12)),
+                border: Border(bottom: BorderSide(color: urgencyColor.withValues(alpha: 0.3))),
+              ),
+              child: Row(
+                children: [
+                  Icon(_urgencyIcon(consult.urgency),
+                      size: 14, color: urgencyColor),
+                  const SizedBox(width: 6),
+                  Text(consult.urgency.label.toUpperCase(),
+                      style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: urgencyColor,
+                          letterSpacing: 0.5)),
+                  const Spacer(),
+                  Text(DateFormatters.timeAgo(consult.createdAt),
+                      style: const TextStyle(
+                          fontSize: 11, color: AppColors.textSecondary)),
+                ],
+              ),
             ),
-            child: Row(
-              children: [
-                Icon(_urgencyIcon(consult.urgency),
-                    size: 14, color: urgencyColor),
-                const SizedBox(width: 6),
-                Text(consult.urgency.label.toUpperCase(),
-                    style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: urgencyColor,
-                        letterSpacing: 0.5)),
-                const Spacer(),
-                Text(DateFormatters.timeAgo(consult.createdAt),
-                    style: const TextStyle(
-                        fontSize: 11, color: AppColors.textSecondary)),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    CircleAvatar(
-                      radius: 18,
-                      backgroundColor: AppColors.primaryContainer,
-                      child: Text(
-                        _initials(consult.patientName),
-                        style: const TextStyle(
-                            color: AppColors.primary,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(consult.patientName,
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.w700, fontSize: 15)),
-                          Text('CHW: ${consult.chwName}',
-                              style: const TextStyle(
-                                  fontSize: 12,
-                                  color: AppColors.textSecondary)),
-                        ],
-                      ),
-                    ),
-                    if (consult.triageRisk != null)
-                      RiskBadge(riskLevel: consult.triageRisk!),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Text(consult.reason,
-                    style: const TextStyle(fontSize: 13),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () => _accept(context, ref),
-                        icon: const Icon(Icons.check_circle_outline, size: 16),
-                        label: const Text('Accept'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: AppColors.riskLow,
-                          side: BorderSide(
-                              color: AppColors.riskLow.withOpacity(0.6)),
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 18,
+                        backgroundColor: AppColors.primaryContainer,
+                        child: Text(
+                          _initials(consult.patientName),
+                          style: const TextStyle(
+                              color: AppColors.primary,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: () => _openChat(context),
-                        icon: const Icon(Icons.chat_outlined, size: 16),
-                        label: const Text('View / Chat'),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(consult.patientName,
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w700, fontSize: 15)),
+                            Text('CSW: ${consult.chwName}',
+                                style: const TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.textSecondary)),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              ],
+                      if (consult.triageRisk != null)
+                        RiskBadge(riskLevel: consult.triageRisk!),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Text(consult.reason,
+                      style: const TextStyle(fontSize: 13),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () => _accept(context, ref),
+                          icon: const Icon(Icons.check_circle_outline, size: 16),
+                          label: const Text('Accept'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.riskLow,
+                            side: BorderSide(
+                                color: AppColors.riskLow.withValues(alpha: 0.6)),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () => _openDetails(context),
+                          icon: const Icon(Icons.description_outlined, size: 16),
+                          label: const Text('View Details'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -203,11 +208,11 @@ class _ConsultCard extends ConsumerWidget {
     }
   }
 
-  void _openChat(BuildContext context) {
+  void _openDetails(BuildContext context) {
     Navigator.push(
         context,
         MaterialPageRoute(
-            builder: (_) => ConsultChatScreen(consult: consult)));
+            builder: (_) => ConsultDetailScreen(consult: consult)));
   }
 
   Color _urgencyColor(UrgencyLevel u) {

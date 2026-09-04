@@ -9,30 +9,84 @@ import '../../models/referral_model.dart';
 import '../../providers/referral_provider.dart';
 import 'referral_detail_screen.dart';
 
-class ReferralListScreen extends ConsumerWidget {
+class ReferralListScreen extends ConsumerStatefulWidget {
   final bool embedded;
   const ReferralListScreen({super.key, this.embedded = false});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ReferralListScreen> createState() => _ReferralListScreenState();
+}
+
+class _ReferralListScreenState extends ConsumerState<ReferralListScreen> {
+  ReferralStatus? _selectedStatus; // null means All
+
+  @override
+  Widget build(BuildContext context) {
     final referralsAsync = ref.watch(allReferralsProvider);
 
     final body = referralsAsync.when(
       data: (referrals) {
-        if (referrals.isEmpty) {
-          return const EmptyState(
-            message: 'No referrals yet',
-            subtitle: 'Referrals raised by doctors will appear here',
-            icon: Icons.local_hospital_outlined,
-          );
-        }
-        return RefreshIndicator(
-          onRefresh: () async => ref.invalidate(allReferralsProvider),
-          child: ListView.builder(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
-            itemCount: referrals.length,
-            itemBuilder: (_, i) => _ReferralCard(referral: referrals[i]),
-          ),
+        final filtered = _selectedStatus == null
+            ? referrals
+            : referrals
+                .where((r) => r.currentStatus == _selectedStatus)
+                .toList();
+
+        return Column(
+          children: [
+            // Status filter chips
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: FilterChip(
+                      label: const Text('All'),
+                      selected: _selectedStatus == null,
+                      onSelected: (_) => setState(() => _selectedStatus = null),
+                      selectedColor: AppColors.primaryContainer,
+                      checkmarkColor: AppColors.primary,
+                    ),
+                  ),
+                  ...ReferralStatus.values.map((status) {
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: FilterChip(
+                        label: Text(status.label),
+                        selected: _selectedStatus == status,
+                        onSelected: (_) =>
+                            setState(() => _selectedStatus = status),
+                        selectedColor: AppColors.primaryContainer,
+                        checkmarkColor: AppColors.primary,
+                      ),
+                    );
+                  }),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: filtered.isEmpty
+                  ? EmptyState(
+                      message: _selectedStatus == null
+                          ? 'No referrals yet'
+                          : 'No ${_selectedStatus!.label.toLowerCase()} referrals',
+                      subtitle:
+                          'Referrals created by CSWs or Doctors will appear here',
+                      icon: Icons.local_hospital_outlined,
+                    )
+                  : RefreshIndicator(
+                      onRefresh: () async => ref.invalidate(allReferralsProvider),
+                      child: ListView.builder(
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
+                        itemCount: filtered.length,
+                        itemBuilder: (_, i) => _ReferralCard(referral: filtered[i]),
+                      ),
+                    ),
+            ),
+          ],
         );
       },
       loading: () => ListView(
@@ -48,7 +102,7 @@ class ReferralListScreen extends ConsumerWidget {
           icon: Icons.error_outline),
     );
 
-    if (embedded) return body;
+    if (widget.embedded) return body;
     return Scaffold(
       appBar: AppBar(title: const Text('Referrals')),
       body: body,
@@ -62,6 +116,11 @@ class _ReferralCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final creatorLabel = referral.raisedByRole.toLowerCase() == 'csw' ||
+            referral.raisedByRole.toLowerCase() == 'chw'
+        ? 'CSW: ${referral.raisedByName}'
+        : 'Doctor: ${referral.raisedByName}';
+
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: InkWell(
@@ -107,7 +166,7 @@ class _ReferralCard extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('Dr. ${referral.raisedByName}',
+                  Text(creatorLabel,
                       style: const TextStyle(
                           fontSize: 11, color: AppColors.textSecondary)),
                   Text(DateFormatters.timeAgo(referral.createdAt),
@@ -147,9 +206,9 @@ class _StatusChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: _color.withOpacity(0.1),
+        color: _color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: _color.withOpacity(0.4)),
+        border: Border.all(color: _color.withValues(alpha: 0.4)),
       ),
       child: Text(
         status.label,

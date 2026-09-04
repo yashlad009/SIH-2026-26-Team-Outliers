@@ -55,13 +55,17 @@ class PatientRepository {
   }
 
   Future<TriageResultModel?> getLatestTriage(String patientId) async {
-    final snap = await _triageCol
-        .where('patientId', isEqualTo: patientId)
-        .orderBy('assessedAt', descending: true)
-        .limit(1)
-        .get();
-    if (snap.docs.isEmpty) return null;
-    return TriageResultModel.fromFirestore(snap.docs.first);
+    try {
+      final snap = await _triageCol
+          .where('patientId', isEqualTo: patientId)
+          .get();
+      if (snap.docs.isEmpty) return null;
+      final list = snap.docs.map(TriageResultModel.fromFirestore).toList();
+      list.sort((a, b) => b.assessedAt.compareTo(a.assessedAt));
+      return list.first;
+    } catch (e) {
+      return null;
+    }
   }
 
   Future<String> saveTriage(TriageResultModel triage) async {

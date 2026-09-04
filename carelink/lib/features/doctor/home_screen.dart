@@ -13,6 +13,11 @@ import '../../core/widgets/loading_state.dart';
 import '../../core/widgets/empty_state.dart';
 import '../../models/patient_model.dart';
 
+import '../../providers/consult_provider.dart';
+import '../../providers/referral_provider.dart';
+import '../../models/triage_result_model.dart';
+import '../../models/referral_model.dart';
+
 class DoctorHomeScreen extends ConsumerStatefulWidget {
   const DoctorHomeScreen({super.key});
 
@@ -26,7 +31,7 @@ class _DoctorHomeScreenState extends ConsumerState<DoctorHomeScreen> {
   @override
   Widget build(BuildContext context) {
     final pages = [
-      const _DoctorOverviewTab(),
+      _DoctorOverviewTab(onTabSwitch: (i) => setState(() => _tab = i)),
       const ConsultQueueScreen(embedded: true),
       const ReferralListScreen(embedded: true),
     ];
@@ -69,15 +74,35 @@ class _DoctorHomeScreenState extends ConsumerState<DoctorHomeScreen> {
 }
 
 class _DoctorOverviewTab extends ConsumerWidget {
-  const _DoctorOverviewTab();
+  final ValueChanged<int> onTabSwitch;
+  const _DoctorOverviewTab({required this.onTabSwitch});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(userProfileProvider);
     final patientsAsync = ref.watch(patientListProvider);
+    final pendingAsync = ref.watch(pendingConsultsProvider);
+    final referralsAsync = ref.watch(allReferralsProvider);
+
+    final pendingCount = pendingAsync.valueOrNull?.length ?? 0;
+    final activeReferralsCount = referralsAsync.valueOrNull
+            ?.where((r) =>
+                r.currentStatus != ReferralStatus.completed &&
+                r.currentStatus != ReferralStatus.dropped)
+            .length ??
+        0;
+
+    final highRiskCount = patientsAsync.valueOrNull
+            ?.where((p) => p.triageRisk == RiskLevel.high)
+            .length ??
+        0;
 
     return RefreshIndicator(
-      onRefresh: () async => ref.invalidate(patientListProvider),
+      onRefresh: () async {
+        ref.invalidate(patientListProvider);
+        ref.invalidate(pendingConsultsProvider);
+        ref.invalidate(allReferralsProvider);
+      },
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
@@ -92,12 +117,48 @@ class _DoctorOverviewTab extends ConsumerWidget {
                 style: Theme.of(context).textTheme.bodySmall),
             const SizedBox(height: 20),
 
-            // Quick action — go to consult queue
+            // Live Metrics Cards
+            Row(
+              children: [
+                Expanded(
+                  child: _MetricCard(
+                    title: 'Pending Consults',
+                    count: '$pendingCount',
+                    icon: Icons.queue_outlined,
+                    color: AppColors.riskMedium,
+                    onTap: () => onTabSwitch(1),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _MetricCard(
+                    title: 'Active Referrals',
+                    count: '$activeReferralsCount',
+                    icon: Icons.local_hospital_outlined,
+                    color: AppColors.primary,
+                    onTap: () => onTabSwitch(2),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _MetricCard(
+                    title: 'High Risk Patients',
+                    count: '$highRiskCount',
+                    icon: Icons.warning_amber_rounded,
+                    color: AppColors.riskHigh,
+                    onTap: () {},
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+
+            // Quick action banner — Go to consult queue
             Card(
               color: AppColors.primary,
               child: InkWell(
                 borderRadius: BorderRadius.circular(12),
-                onTap: () {},
+                onTap: () => onTabSwitch(1),
                 child: const Padding(
                   padding: EdgeInsets.all(16),
                   child: Row(
@@ -114,7 +175,7 @@ class _DoctorOverviewTab extends ConsumerWidget {
                                     color: Colors.white,
                                     fontWeight: FontWeight.w700,
                                     fontSize: 15)),
-                            Text('Tap "Consults" tab to view pending requests',
+                            Text('Tap to review pending CSW consultation requests',
                                 style: TextStyle(
                                     color: Colors.white70, fontSize: 12)),
                           ],
@@ -128,14 +189,14 @@ class _DoctorOverviewTab extends ConsumerWidget {
             ),
             const SizedBox(height: 24),
 
-            Text('Patient List',
+            Text('Patient Records',
                 style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 8),
             patientsAsync.when(
               data: (patients) {
                 if (patients.isEmpty) {
                   return const EmptyState(
-                    message: 'No patients yet',
+                    message: 'No patients registered yet',
                     icon: Icons.people_outline,
                   );
                 }
@@ -153,6 +214,58 @@ class _DoctorOverviewTab extends ConsumerWidget {
                   icon: Icons.error_outline),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MetricCard extends StatelessWidget {
+  final String title;
+  final String count;
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _MetricCard({
+    required this.title,
+    required this.count,
+    required this.icon,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      elevation: 2,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(icon, color: color, size: 22),
+              const SizedBox(height: 8),
+              Text(
+                count,
+                style: TextStyle(
+                    fontSize: 22, fontWeight: FontWeight.w800, color: color),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textSecondary,
+                    height: 1.2),
+              ),
+            ],
+          ),
         ),
       ),
     );
