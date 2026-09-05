@@ -17,6 +17,7 @@ import 'patient_list_screen.dart';
 import 'new_patient_screen.dart';
 import 'triage_form_screen.dart';
 import 'consult_request_screen.dart';
+import 'chw_consult_list_screen.dart';
 import 'follow_up_task_screen.dart';
 import '../referral/referral_list_screen.dart';
 import '../inventory/medicine_stock_screen.dart';
@@ -161,14 +162,22 @@ class _OverviewTab extends ConsumerWidget {
                       label: 'Consults',
                       value: '$activeConsults',
                       icon: Icons.chat_outlined,
-                      color: AppColors.secondary)),
+                      color: AppColors.secondary,
+                      onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => const ChwConsultListScreen())))),
               const SizedBox(width: 12),
               Expanded(
                   child: _StatCard(
                       label: 'Tasks Due',
                       value: '$pendingTasks',
                       icon: Icons.task_alt_outlined,
-                      color: AppColors.statusScheduled)),
+                      color: AppColors.statusScheduled,
+                      onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => const FollowUpTaskScreen())))),
             ]),
             const SizedBox(height: 24),
             Text('Quick Actions',
@@ -323,31 +332,39 @@ class _StatCard extends StatelessWidget {
   final String value;
   final IconData icon;
   final Color color;
-  const _StatCard(
-      {required this.label,
-      required this.value,
-      required this.icon,
-      required this.color});
+  final VoidCallback? onTap;
+
+  const _StatCard({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.color,
+    this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon, color: color, size: 22),
-            const SizedBox(height: 6),
-            Text(value,
-                style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w700,
-                    color: color)),
-            Text(label,
-                style: const TextStyle(
-                    fontSize: 11, color: AppColors.textSecondary)),
-          ],
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(icon, color: color, size: 22),
+              const SizedBox(height: 6),
+              Text(value,
+                  style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w700,
+                      color: color)),
+              Text(label,
+                  style: const TextStyle(
+                      fontSize: 11, color: AppColors.textSecondary)),
+            ],
+          ),
         ),
       ),
     );

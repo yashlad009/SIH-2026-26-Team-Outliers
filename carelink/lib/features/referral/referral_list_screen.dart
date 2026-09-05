@@ -9,6 +9,9 @@ import '../../models/referral_model.dart';
 import '../../providers/referral_provider.dart';
 import 'referral_detail_screen.dart';
 
+import '../../providers/patient_provider.dart';
+import '../doctor/raise_referral_screen.dart';
+
 class ReferralListScreen extends ConsumerStatefulWidget {
   final bool embedded;
   const ReferralListScreen({super.key, this.embedded = false});
@@ -19,6 +22,47 @@ class ReferralListScreen extends ConsumerStatefulWidget {
 
 class _ReferralListScreenState extends ConsumerState<ReferralListScreen> {
   ReferralStatus? _selectedStatus; // null means All
+
+  Future<void> _openCreateReferral() async {
+    final patients = ref.read(patientListProvider).valueOrNull ?? [];
+    if (patients.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No patients available to create a referral.')),
+      );
+      return;
+    }
+    final patient = await showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Select Patient for Referral'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: patients.length,
+            itemBuilder: (_, i) {
+              final p = patients[i];
+              return ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: AppColors.primaryContainer,
+                  child: Text(p.initials, style: const TextStyle(color: AppColors.primary)),
+                ),
+                title: Text(p.name),
+                subtitle: Text('${p.age}y · ${p.village}'),
+                onTap: () => Navigator.pop(ctx, p),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+    if (patient != null && mounted) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => RaiseReferralScreen(patient: patient)),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -102,10 +146,24 @@ class _ReferralListScreenState extends ConsumerState<ReferralListScreen> {
           icon: Icons.error_outline),
     );
 
-    if (widget.embedded) return body;
+    if (widget.embedded) {
+      return Scaffold(
+        body: body,
+        floatingActionButton: FloatingActionButton.extended(
+          onPressed: _openCreateReferral,
+          icon: const Icon(Icons.add),
+          label: const Text('Create Referral'),
+        ),
+      );
+    }
     return Scaffold(
       appBar: AppBar(title: const Text('Referrals')),
       body: body,
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _openCreateReferral,
+        icon: const Icon(Icons.add),
+        label: const Text('Create Referral'),
+      ),
     );
   }
 }
@@ -116,10 +174,10 @@ class _ReferralCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final creatorLabel = referral.raisedByRole.toLowerCase() == 'csw' ||
-            referral.raisedByRole.toLowerCase() == 'chw'
-        ? 'CHW: ${referral.raisedByName}'
-        : 'Doctor: ${referral.raisedByName}';
+    final isDoctor = referral.raisedByRole.toLowerCase() == 'doctor';
+    final creatorText = isDoctor
+        ? 'Created by Doctor — ${referral.raisedByName.isNotEmpty ? referral.raisedByName : 'Doctor'}'
+        : 'Created by CHW — ${referral.raisedByName.isNotEmpty ? referral.raisedByName : 'CHW'}';
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -148,14 +206,51 @@ class _ReferralCard extends StatelessWidget {
               const SizedBox(height: 4),
               Text('→ ${referral.referredTo}',
                   style: const TextStyle(
-                      color: AppColors.primary, fontWeight: FontWeight.w500)),
+                      color: AppColors.primary, fontWeight: FontWeight.w600)),
               const SizedBox(height: 4),
               Text(referral.reason,
                   style: const TextStyle(
                       fontSize: 13, color: AppColors.textSecondary),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis),
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
+
+              // Creator Identification Badge
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: isDoctor
+                      ? AppColors.primaryContainer.withValues(alpha: 0.5)
+                      : AppColors.surfaceVariant,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
+                    color: isDoctor
+                        ? AppColors.primary.withValues(alpha: 0.3)
+                        : AppColors.border,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      isDoctor ? Icons.medical_services_outlined : Icons.person_outline,
+                      size: 13,
+                      color: isDoctor ? AppColors.primaryDark : AppColors.textSecondary,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      creatorText,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: isDoctor ? AppColors.primaryDark : AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 10),
+
               // Compact stepper
               if (!referral.currentStatus.isTerminal ||
                   referral.currentStatus == ReferralStatus.completed) ...[
@@ -163,16 +258,11 @@ class _ReferralCard extends StatelessWidget {
                     currentStatus: referral.currentStatus, compact: true),
                 const SizedBox(height: 8),
               ],
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(creatorLabel,
-                      style: const TextStyle(
-                          fontSize: 11, color: AppColors.textSecondary)),
-                  Text(DateFormatters.timeAgo(referral.createdAt),
-                      style: const TextStyle(
-                          fontSize: 11, color: AppColors.textSecondary)),
-                ],
+              Align(
+                alignment: Alignment.centerRight,
+                child: Text(DateFormatters.timeAgo(referral.createdAt),
+                    style: const TextStyle(
+                        fontSize: 11, color: AppColors.textSecondary)),
               ),
             ],
           ),

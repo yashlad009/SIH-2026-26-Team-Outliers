@@ -26,6 +26,22 @@ class FollowUpRepository {
     });
   }
 
+  Stream<List<FollowUpTaskModel>> watchTasksByPatient(String patientId) {
+    return _col
+        .where('patientId', isEqualTo: patientId)
+        .snapshots(includeMetadataChanges: true)
+        .map((s) {
+      final list = s.docs.map(FollowUpTaskModel.fromFirestore).toList();
+      list.sort((a, b) => a.dueDate.compareTo(b.dueDate));
+      return list;
+    });
+  }
+
+  Future<String> createTask(FollowUpTaskModel task) async {
+    final ref = await _col.add(task.toFirestore());
+    return ref.id;
+  }
+
   Future<void> markDone(String taskId) async {
     await _col.doc(taskId).update({
       'isDone': true,
