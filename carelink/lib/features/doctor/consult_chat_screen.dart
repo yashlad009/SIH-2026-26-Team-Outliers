@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:uuid/uuid.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/utils/date_formatters.dart';
 import '../../core/widgets/app_scaffold.dart';
@@ -36,8 +35,15 @@ class _ConsultChatScreenState extends ConsumerState<ConsultChatScreen> {
   Future<void> _send() async {
     final text = _msgCtrl.text.trim();
     if (text.isEmpty) return;
-    final user = ref.read(userProfileProvider);
-    if (user == null) return;
+    final user = ref.read(activeUserProfileProvider);
+    if (user == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error: No active user profile found')),
+        );
+      }
+      return;
+    }
 
     setState(() => _sending = true);
     _msgCtrl.clear();
@@ -115,16 +121,22 @@ class _ConsultChatScreenState extends ConsumerState<ConsultChatScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final user = ref.watch(userProfileProvider);
+    final user = ref.watch(activeUserProfileProvider);
     final messagesAsync =
         ref.watch(consultMessagesProvider(widget.consult.id));
     final isDoctor = user?.role.name == 'doctor';
 
     return AppScaffold(
       appBar: AppBar(
-        title: Text(widget.consult.patientName),
-        subtitle: Text(widget.consult.status.label,
-            style: const TextStyle(color: Colors.white70, fontSize: 12)),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(widget.consult.patientName),
+            Text(widget.consult.status.label,
+                style: const TextStyle(color: Colors.white70, fontSize: 12)),
+          ],
+        ),
         actions: [
           // Video call placeholder
           IconButton(

@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'consult_request_model.dart';
 
 enum ReferralStatus { created, accepted, scheduled, completed, dropped }
 
@@ -76,8 +77,11 @@ class ReferralModel {
   final String patientName;
   final String raisedByUid;
   final String raisedByName;
-  final String referredTo; // Hospital/facility name
+  final String raisedByRole; // 'chw' or 'doctor'
+  final String? fromFacility;
+  final String referredTo; // Hospital/facility/doctor name
   final String reason;
+  final UrgencyLevel urgency;
   final String? diagnosis;
   final ReferralStatus currentStatus;
   final List<ReferralStatusEntry> statusHistory;
@@ -91,8 +95,11 @@ class ReferralModel {
     required this.patientName,
     required this.raisedByUid,
     required this.raisedByName,
+    this.raisedByRole = 'doctor',
+    this.fromFacility,
     required this.referredTo,
     required this.reason,
+    this.urgency = UrgencyLevel.routine,
     this.diagnosis,
     required this.currentStatus,
     this.statusHistory = const [],
@@ -110,8 +117,11 @@ class ReferralModel {
       patientName: data['patientName'] as String? ?? '',
       raisedByUid: data['raisedByUid'] as String? ?? '',
       raisedByName: data['raisedByName'] as String? ?? '',
+      raisedByRole: data['raisedByRole'] as String? ?? 'doctor',
+      fromFacility: data['fromFacility'] as String?,
       referredTo: data['referredTo'] as String? ?? '',
       reason: data['reason'] as String? ?? '',
+      urgency: UrgencyLevelX.fromString(data['urgency'] as String? ?? 'routine'),
       diagnosis: data['diagnosis'] as String?,
       currentStatus: ReferralStatusX.fromString(data['currentStatus'] as String? ?? 'created'),
       statusHistory: historyList
@@ -128,8 +138,11 @@ class ReferralModel {
         'patientName': patientName,
         'raisedByUid': raisedByUid,
         'raisedByName': raisedByName,
+        'raisedByRole': raisedByRole,
+        'fromFacility': fromFacility,
         'referredTo': referredTo,
         'reason': reason,
+        'urgency': urgency.name,
         'diagnosis': diagnosis,
         'currentStatus': currentStatus.name,
         'statusHistory': statusHistory.map((e) => e.toMap()).toList(),
@@ -142,6 +155,7 @@ class ReferralModel {
     ReferralStatus? currentStatus,
     List<ReferralStatusEntry>? statusHistory,
     DateTime? scheduledDate,
+    UrgencyLevel? urgency,
   }) =>
       ReferralModel(
         id: id,
@@ -149,8 +163,11 @@ class ReferralModel {
         patientName: patientName,
         raisedByUid: raisedByUid,
         raisedByName: raisedByName,
+        raisedByRole: raisedByRole,
+        fromFacility: fromFacility,
         referredTo: referredTo,
         reason: reason,
+        urgency: urgency ?? this.urgency,
         diagnosis: diagnosis,
         currentStatus: currentStatus ?? this.currentStatus,
         statusHistory: statusHistory ?? this.statusHistory,
@@ -159,3 +176,4 @@ class ReferralModel {
         scheduledDate: scheduledDate ?? this.scheduledDate,
       );
 }
+

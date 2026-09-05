@@ -14,7 +14,7 @@ class PatientRepository {
   Stream<List<PatientModel>> watchAllPatients() {
     return _col
         .orderBy('registeredAt', descending: true)
-        .snapshots()
+        .snapshots(includeMetadataChanges: true)
         .map((s) => s.docs.map(PatientModel.fromFirestore).toList());
   }
 
@@ -25,8 +25,13 @@ class PatientRepository {
   }
 
   Future<String> createPatient(PatientModel patient) async {
-    final ref = await _col.add(patient.toFirestore());
-    return ref.id;
+    final docRef = _col.doc();
+    final newPatient = patient.copyWith(id: docRef.id);
+    // Write directly to local Firestore cache; timeout ensures instant UI response when offline
+    await docRef
+        .set(newPatient.toFirestore())
+        .timeout(const Duration(milliseconds: 800), onTimeout: () {});
+    return docRef.id;
   }
 
   Future<void> updatePatient(PatientModel patient) async {
@@ -41,28 +46,40 @@ class PatientRepository {
   Stream<List<TriageResultModel>> watchTriageResults(String patientId) {
     return _triageCol
         .where('patientId', isEqualTo: patientId)
-        .orderBy('assessedAt', descending: true)
-        .snapshots()
-        .map((s) => s.docs.map(TriageResultModel.fromFirestore).toList());
+        .snapshots(includeMetadataChanges: true)
+        .map((s) {
+      final list = s.docs.map(TriageResultModel.fromFirestore).toList();
+      list.sort((a, b) => b.assessedAt.compareTo(a.assessedAt));
+      return list;
+    });
   }
 
   Future<TriageResultModel?> getLatestTriage(String patientId) async {
-    final snap = await _triageCol
-        .where('patientId', isEqualTo: patientId)
-        .orderBy('assessedAt', descending: true)
-        .limit(1)
-        .get();
-    if (snap.docs.isEmpty) return null;
-    return TriageResultModel.fromFirestore(snap.docs.first);
+    try {
+      final snap = await _triageCol
+          .where('patientId', isEqualTo: patientId)
+          .get();
+      if (snap.docs.isEmpty) return null;
+      final list = snap.docs.map(TriageResultModel.fromFirestore).toList();
+      list.sort((a, b) => b.assessedAt.compareTo(a.assessedAt));
+      return list.first;
+    } catch (e) {
+      return null;
+    }
   }
 
   Future<String> saveTriage(TriageResultModel triage) async {
-    final ref = await _triageCol.add(triage.toFirestore());
-    // Update patient lastVisitAt
+    final docRef = _triageCol.doc();
+    final newTriage = triage.copyWith(id: docRef.id);
+    await docRef
+        .set(newTriage.toFirestore())
+        .timeout(const Duration(milliseconds: 800), onTimeout: () {});
+    // Update patient lastVisitAt and triageRisk
     await _col.doc(triage.patientId).update({
       'lastVisitAt': Timestamp.fromDate(triage.assessedAt),
-    });
-    return ref.id;
+      'triageRisk': triage.riskLevel.name,
+    }).timeout(const Duration(milliseconds: 800), onTimeout: () {});
+    return docRef.id;
   }
 
   Future<void> updateTriageAiNote(

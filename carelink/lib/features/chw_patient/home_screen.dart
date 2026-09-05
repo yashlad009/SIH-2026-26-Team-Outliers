@@ -10,15 +10,19 @@ import '../../providers/patient_provider.dart';
 import '../../providers/consult_provider.dart';
 import '../../providers/inventory_provider.dart';
 import '../../models/patient_model.dart';
+import '../../models/consult_request_model.dart';
+import '../../models/follow_up_task_model.dart';
 import '../patient_record/patient_record_screen.dart';
 import 'patient_list_screen.dart';
 import 'new_patient_screen.dart';
 import 'triage_form_screen.dart';
 import 'consult_request_screen.dart';
+import 'chw_consult_list_screen.dart';
 import 'follow_up_task_screen.dart';
 import '../referral/referral_list_screen.dart';
 import '../inventory/medicine_stock_screen.dart';
 import '../settings/settings_screen.dart';
+import '../../core/widgets/risk_badge.dart';
 
 class ChwHomeScreen extends ConsumerStatefulWidget {
   const ChwHomeScreen({super.key});
@@ -32,7 +36,7 @@ class _ChwHomeScreenState extends ConsumerState<ChwHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final user = ref.watch(userProfileProvider);
+    final user = ref.watch(activeUserProfileProvider);
     final pages = [
       _OverviewTab(user: user),
       const PatientListScreen(embedded: true),
@@ -114,10 +118,10 @@ class _OverviewTab extends ConsumerWidget {
     final patientsAsync = ref.watch(patientListProvider);
     final consultsAsync = user != null
         ? ref.watch(chwConsultsProvider(user!.uid))
-        : const AsyncData([]);
+        : const AsyncData<List<ConsultRequestModel>>([]);
     final tasksAsync = user != null
         ? ref.watch(followUpTasksByChwProvider(user!.uid))
-        : const AsyncData([]);
+        : const AsyncData<List<FollowUpTaskModel>>([]);
 
     final activeConsults = consultsAsync.valueOrNull
             ?.where((c) =>
@@ -158,14 +162,22 @@ class _OverviewTab extends ConsumerWidget {
                       label: 'Consults',
                       value: '$activeConsults',
                       icon: Icons.chat_outlined,
-                      color: AppColors.secondary)),
+                      color: AppColors.secondary,
+                      onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => const ChwConsultListScreen())))),
               const SizedBox(width: 12),
               Expanded(
                   child: _StatCard(
                       label: 'Tasks Due',
                       value: '$pendingTasks',
                       icon: Icons.task_alt_outlined,
-                      color: AppColors.statusScheduled)),
+                      color: AppColors.statusScheduled,
+                      onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => FollowUpTaskScreen(chwUid: user?.uid))))),
             ]),
             const SizedBox(height: 24),
             Text('Quick Actions',
@@ -212,6 +224,8 @@ class _OverviewTab extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: 24),
+            const _PendingSyncSection(),
+            const SizedBox(height: 12),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -318,31 +332,39 @@ class _StatCard extends StatelessWidget {
   final String value;
   final IconData icon;
   final Color color;
-  const _StatCard(
-      {required this.label,
-      required this.value,
-      required this.icon,
-      required this.color});
+  final VoidCallback? onTap;
+
+  const _StatCard({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.color,
+    this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon, color: color, size: 22),
-            const SizedBox(height: 6),
-            Text(value,
-                style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w700,
-                    color: color)),
-            Text(label,
-                style: const TextStyle(
-                    fontSize: 11, color: AppColors.textSecondary)),
-          ],
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(icon, color: color, size: 22),
+              const SizedBox(height: 6),
+              Text(value,
+                  style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w700,
+                      color: color)),
+              Text(label,
+                  style: const TextStyle(
+                      fontSize: 11, color: AppColors.textSecondary)),
+            ],
+          ),
         ),
       ),
     );
@@ -424,3 +446,128 @@ class _PatientTile extends StatelessWidget {
     );
   }
 }
+
+class _PendingSyncSection extends ConsumerWidget {
+  const _PendingSyncSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final pendingAsync = ref.watch(pendingSyncPatientsProvider);
+
+    return pendingAsync.when(
+      data: (pendingPatients) {
+        final count = pendingPatients.length;
+        return Card(
+          margin: const EdgeInsets.only(bottom: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(
+              color: count > 0 ? AppColors.offlineBanner : AppColors.border,
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      count > 0 ? Icons.cloud_off : Icons.cloud_done_outlined,
+                      size: 18,
+                      color: count > 0 ? AppColors.offlineBanner : AppColors.riskLow,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Pending Sync — $count Record${count == 1 ? '' : 's'}',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                if (count == 0)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 4),
+                    child: Text(
+                      'All records are synced.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  )
+                else
+                  Column(
+                    children: pendingPatients.map((p) {
+                      final risk = p.triageRisk;
+                      return Container(
+                        margin: const EdgeInsets.only(top: 6),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceVariant,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.sync_problem_outlined,
+                                size: 16, color: AppColors.offlineBanner),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    p.name,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                  Text(
+                                    '${p.age}y · ${p.village}',
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      color: AppColors.textSecondary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            if (risk != null) ...[
+                              RiskBadge(riskLevel: risk),
+                              const SizedBox(width: 6),
+                            ],
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: AppColors.offlineBanner.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: const Text(
+                                'Waiting for sync',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.offlineBanner,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
+    );
+  }
+}
+

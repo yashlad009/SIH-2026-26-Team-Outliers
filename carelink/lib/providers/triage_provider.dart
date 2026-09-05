@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../data/repositories/patient_repository.dart';
 import '../models/triage_result_model.dart';
 import '../core/services/gemini_service.dart';
+import 'patient_provider.dart';
 
 final geminiServiceProvider = Provider<GeminiService>((ref) => GeminiService());
 

@@ -1,6 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/referral_model.dart';
-import '../models/triage_result_model.dart';
 import 'referral_provider.dart';
 import 'patient_provider.dart';
 

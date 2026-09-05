@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../core/constants/firestore_paths.dart';
 import '../../models/consult_request_model.dart';
+import '../../models/triage_result_model.dart';
 
 class ConsultRepository {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
@@ -11,25 +12,66 @@ class ConsultRepository {
   Stream<List<ConsultRequestModel>> watchPendingConsults() {
     return _col
         .where('status', isEqualTo: 'pending')
-        .orderBy('createdAt', descending: false)
-        .snapshots()
-        .map((s) => s.docs.map(ConsultRequestModel.fromFirestore).toList());
+        .snapshots(includeMetadataChanges: true)
+        .map((s) {
+      final list = s.docs.map(ConsultRequestModel.fromFirestore).toList();
+      list.sort((a, b) {
+        // 1. Risk priority (High > Medium > Low > null)
+        final priorityA = _riskPriority(a.triageRisk);
+        final priorityB = _riskPriority(b.triageRisk);
+        if (priorityA != priorityB) {
+          return priorityB.compareTo(priorityA); // Highest priority first
+        }
+        // 2. Newest first
+        return b.createdAt.compareTo(a.createdAt);
+      });
+      return list;
+    });
+  }
+
+  int _riskPriority(RiskLevel? risk) {
+    if (risk == null) return 0;
+    switch (risk) {
+      case RiskLevel.high:
+        return 3;
+      case RiskLevel.medium:
+        return 2;
+      case RiskLevel.low:
+        return 1;
+    }
   }
 
   Stream<List<ConsultRequestModel>> watchConsultsByChw(String chwUid) {
     return _col
         .where('chwUid', isEqualTo: chwUid)
-        .orderBy('createdAt', descending: true)
-        .snapshots()
-        .map((s) => s.docs.map(ConsultRequestModel.fromFirestore).toList());
+        .snapshots(includeMetadataChanges: true)
+        .map((s) {
+      final list = s.docs.map(ConsultRequestModel.fromFirestore).toList();
+      list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return list;
+    });
+  }
+
+  Stream<List<ConsultRequestModel>> watchConsultsByDoctor(String doctorUid) {
+    return _col
+        .where('doctorUid', isEqualTo: doctorUid)
+        .snapshots(includeMetadataChanges: true)
+        .map((s) {
+      final list = s.docs.map(ConsultRequestModel.fromFirestore).toList();
+      list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return list;
+    });
   }
 
   Stream<List<ConsultRequestModel>> watchConsultsByPatient(String patientId) {
     return _col
         .where('patientId', isEqualTo: patientId)
-        .orderBy('createdAt', descending: true)
-        .snapshots()
-        .map((s) => s.docs.map(ConsultRequestModel.fromFirestore).toList());
+        .snapshots(includeMetadataChanges: true)
+        .map((s) {
+      final list = s.docs.map(ConsultRequestModel.fromFirestore).toList();
+      list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return list;
+    });
   }
 
   Future<ConsultRequestModel?> getConsult(String id) async {

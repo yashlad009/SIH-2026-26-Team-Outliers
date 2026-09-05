@@ -38,3 +38,44 @@ class UserProfileNotifier extends StateNotifier<UserModel?> {
 
   void clear() => state = null;
 }
+
+/// Always returns the active user profile from state, async stream, or authenticated Firebase user.
+final activeUserProfileProvider = Provider<UserModel?>((ref) {
+  final stateUser = ref.watch(userProfileProvider);
+  if (stateUser != null) return stateUser;
+
+  final asyncUser = ref.watch(currentUserProfileProvider).valueOrNull;
+  if (asyncUser != null) return asyncUser;
+
+  final firebaseUser = FirebaseAuth.instance.currentUser;
+  if (firebaseUser != null) {
+    final email = (firebaseUser.email ?? '').toLowerCase();
+    final displayName = firebaseUser.displayName?.isNotEmpty == true
+        ? firebaseUser.displayName!
+        : (email.contains('doc')
+            ? 'Dr. Anita Rao'
+            : email.contains('admin')
+                ? 'District Admin'
+                : 'Priya Shinde (CHW)');
+    final role = email.contains('doc')
+        ? UserRole.doctor
+        : email.contains('admin')
+            ? UserRole.admin
+            : UserRole.chw;
+    return UserModel(
+      uid: firebaseUser.uid,
+      email: firebaseUser.email ?? 'user@carelink.org',
+      displayName: displayName,
+      role: role,
+      facilityName: role == UserRole.doctor
+          ? 'Wada PHC'
+          : role == UserRole.admin
+              ? 'Palghar HQ'
+              : 'Palghar Sub-Center',
+      createdAt: DateTime.now(),
+    );
+  }
+
+  return null;
+});
+

@@ -18,6 +18,14 @@ final chwConsultsProvider = StreamProvider.family<List<ConsultRequestModel>, Str
   },
 );
 
+/// All consults for the current Doctor (by doctorUid)
+final doctorConsultsProvider =
+    StreamProvider.family<List<ConsultRequestModel>, String>(
+  (ref, doctorUid) {
+    return ref.watch(consultRepositoryProvider).watchConsultsByDoctor(doctorUid);
+  },
+);
+
 /// Consults for a specific patient
 final patientConsultsProvider =
     StreamProvider.family<List<ConsultRequestModel>, String>((ref, patientId) {

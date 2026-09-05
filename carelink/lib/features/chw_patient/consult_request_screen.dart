@@ -36,7 +36,7 @@ class _ConsultRequestScreenState extends ConsumerState<ConsultRequestScreen> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _loading = true);
     try {
-      final user = ref.read(userProfileProvider);
+      final user = ref.read(activeUserProfileProvider);
       final latestTriage =
           await PatientRepository().getLatestTriage(widget.patient.id);
 
@@ -45,7 +45,7 @@ class _ConsultRequestScreenState extends ConsumerState<ConsultRequestScreen> {
         patientId: widget.patient.id,
         patientName: widget.patient.name,
         chwUid: user?.uid ?? '',
-        chwName: user?.displayName ?? '',
+        chwName: user?.displayName ?? 'CHW',
         reason: _reasonCtrl.text.trim(),
         urgency: _urgency,
         status: ConsultStatus.pending,
@@ -185,16 +185,22 @@ class _ConsultRequestScreenState extends ConsumerState<ConsultRequestScreen> {
               style: const TextStyle(color: Colors.white)),
         ),
         const SizedBox(width: 12),
-        Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(widget.patient.name,
-              style: const TextStyle(
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.primaryDark)),
-          Text(
-              '${widget.patient.age}y · ${widget.patient.gender.label} · ${widget.patient.village}',
-              style: const TextStyle(
-                  fontSize: 12, color: AppColors.textSecondary)),
-        ]),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(widget.patient.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primaryDark)),
+            Text(
+                '${widget.patient.age}y · ${widget.patient.gender.label} · ${widget.patient.village}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                    fontSize: 12, color: AppColors.textSecondary)),
+          ]),
+        ),
       ]),
     );
   }

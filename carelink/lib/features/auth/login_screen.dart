@@ -6,6 +6,7 @@ import '../../core/widgets/connectivity_banner.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/locale_provider.dart';
 import '../../models/user_model.dart';
+import '../../data/seed/seed_data.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -19,6 +20,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
   bool _loading = false;
+  bool _seeding = false;
   bool _obscure = true;
   String? _error;
 
@@ -27,6 +29,34 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     _emailCtrl.dispose();
     _passwordCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _handleSeedData() async {
+    setState(() => _seeding = true);
+    try {
+      await SeedData.runSeed();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✅ Seed data created successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ Seed error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _seeding = false);
+      }
+    }
   }
 
   Future<void> _signIn() async {
@@ -266,6 +296,38 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             onTap: () => _fillDemo('admin@carelink.demo'),
                           ),
                         ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    // Debug Seed Button
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.amberAccent,
+                          side: const BorderSide(color: Colors.amberAccent, width: 2),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        onPressed: (_loading || _seeding) ? null : _handleSeedData,
+                        icon: _seeding
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.amberAccent,
+                                ),
+                              )
+                            : const Icon(Icons.cloud_upload_outlined),
+                        label: Text(
+                          _seeding
+                              ? 'Seeding Firestore...'
+                              : 'Seed Demo Data (DEBUG - remove before submission)',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 32),

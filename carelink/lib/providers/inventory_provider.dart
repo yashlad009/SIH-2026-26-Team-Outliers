@@ -41,3 +41,9 @@ final followUpTasksByChwProvider =
     StreamProvider.family<List<FollowUpTaskModel>, String>((ref, chwUid) {
   return ref.watch(followUpRepositoryProvider).watchTasksByChw(chwUid);
 });
+
+final followUpTasksByPatientProvider =
+    StreamProvider.family<List<FollowUpTaskModel>, String>((ref, patientId) {
+  return ref.watch(followUpRepositoryProvider).watchTasksByPatient(patientId);
+});
+

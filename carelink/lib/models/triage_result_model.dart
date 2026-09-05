@@ -141,11 +141,12 @@ class TriageResultModel {
       };
 
   TriageResultModel copyWith({
+    String? id,
     String? aiNote,
     bool? aiNoteGenerated,
   }) =>
       TriageResultModel(
-        id: id,
+        id: id ?? this.id,
         patientId: patientId,
         assessedByUid: assessedByUid,
         chiefComplaint: chiefComplaint,

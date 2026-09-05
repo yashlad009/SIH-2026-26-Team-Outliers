@@ -4,6 +4,8 @@ import '../constants/app_colors.dart';
 class AppTheme {
   AppTheme._();
 
+  static ThemeData get lightTheme => light;
+
   static ThemeData get light {
     const colorScheme = ColorScheme(
       brightness: Brightness.light,
@@ -55,7 +57,7 @@ class AppTheme {
       ),
 
       // Card
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: AppColors.cardBackground,
         elevation: 2,
         shadowColor: AppColors.shadow,

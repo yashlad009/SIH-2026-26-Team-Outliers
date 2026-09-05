@@ -16,11 +16,27 @@ class FollowUpRepository {
   }
 
   Stream<List<FollowUpTaskModel>> watchTasksByChw(String chwUid) {
+    return _col.snapshots(includeMetadataChanges: true).map((s) {
+      final list = s.docs.map(FollowUpTaskModel.fromFirestore).toList();
+      list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return list;
+    });
+  }
+
+  Stream<List<FollowUpTaskModel>> watchTasksByPatient(String patientId) {
     return _col
-        .where('assignedToUid', isEqualTo: chwUid)
-        .orderBy('dueDate')
-        .snapshots()
-        .map((s) => s.docs.map(FollowUpTaskModel.fromFirestore).toList());
+        .where('patientId', isEqualTo: patientId)
+        .snapshots(includeMetadataChanges: true)
+        .map((s) {
+      final list = s.docs.map(FollowUpTaskModel.fromFirestore).toList();
+      list.sort((a, b) => a.dueDate.compareTo(b.dueDate));
+      return list;
+    });
+  }
+
+  Future<String> createTask(FollowUpTaskModel task) async {
+    final ref = await _col.add(task.toFirestore());
+    return ref.id;
   }
 
   Future<void> markDone(String taskId) async {
