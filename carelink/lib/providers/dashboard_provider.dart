@@ -1,9 +1,18 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../models/medicine_stock_model.dart';
 import '../models/referral_model.dart';
+import '../models/triage_result_model.dart';
 import 'referral_provider.dart';
 import 'patient_provider.dart';
+import 'inventory_provider.dart';
 
-/// Dashboard summary data aggregated from Firestore streams.
+class DailyCount {
+  final DateTime date;
+  final int count;
+  const DailyCount(this.date, this.count);
+}
+
+/// Real aggregated dashboard metrics derived directly from Firestore data
 class DashboardSummary {
   final int totalPatients;
   final int activeReferrals;
@@ -12,7 +21,12 @@ class DashboardSummary {
   final int lowRiskCount;
   final int completedReferrals;
   final int droppedReferrals;
-  final List<_DailyCount> last7DaysCases;
+  final int pendingFollowUps;
+  final int overdueFollowUps;
+  final int lowStockCount;
+  final int pendingTestsCount;
+  final List<DailyCount> last7DaysCases;
+  final List<DailyCount> last7DaysReferrals;
 
   const DashboardSummary({
     required this.totalPatients,
@@ -22,23 +36,36 @@ class DashboardSummary {
     required this.lowRiskCount,
     required this.completedReferrals,
     required this.droppedReferrals,
+    required this.pendingFollowUps,
+    required this.overdueFollowUps,
+    required this.lowStockCount,
+    required this.pendingTestsCount,
     required this.last7DaysCases,
+    required this.last7DaysReferrals,
   });
-}
-
-class _DailyCount {
-  final DateTime date;
-  final int count;
-  const _DailyCount(this.date, this.count);
 }
 
 final dashboardProvider = Provider<DashboardSummary>((ref) {
   final patientsAsync = ref.watch(patientListProvider);
   final referralsAsync = ref.watch(allReferralsProvider);
+  final followUpsAsync = ref.watch(allFollowUpTasksProvider);
+  final stockAsync = ref.watch(medicineStockProvider);
+  final testsAsync = ref.watch(allDiagnosticTestsProvider);
 
-  final totalPatients = patientsAsync.valueOrNull?.length ?? 0;
-
+  final patients = patientsAsync.valueOrNull ?? [];
   final referrals = referralsAsync.valueOrNull ?? [];
+  final followUps = followUpsAsync.valueOrNull ?? [];
+  final stock = stockAsync.valueOrNull ?? [];
+  final tests = testsAsync.valueOrNull ?? [];
+
+  final totalPatients = patients.length;
+  final highRiskCount =
+      patients.where((p) => p.triageRisk == RiskLevel.high).length;
+  final mediumRiskCount =
+      patients.where((p) => p.triageRisk == RiskLevel.medium).length;
+  final lowRiskCount =
+      patients.where((p) => p.triageRisk == RiskLevel.low).length;
+
   final activeReferrals = referrals
       .where((r) =>
           r.currentStatus != ReferralStatus.completed &&
@@ -49,16 +76,39 @@ final dashboardProvider = Provider<DashboardSummary>((ref) {
   final droppedReferrals =
       referrals.where((r) => r.currentStatus == ReferralStatus.dropped).length;
 
-  // Static mock triage distribution for demo (seeded data)
-  const highRiskCount = 3;
-  const mediumRiskCount = 8;
-  const lowRiskCount = 12;
+  final pendingFollowUps = followUps.where((f) => !f.isDone).length;
+  final overdueFollowUps =
+      followUps.where((f) => !f.isDone && f.isOverdue).length;
 
-  // Mock 7-day case volume
+  final lowStockCount = stock
+      .where((m) =>
+          m.currentQuantity <= m.minimumQuantity ||
+          m.status == StockStatus.low ||
+          m.status == StockStatus.outOfStock)
+      .length;
+  final pendingTestsCount = tests
+      .where((t) => t.status.name == 'pending' || t.status.name == 'sampleCollected')
+      .length;
+
+  // Real 7-day registration counts
   final now = DateTime.now();
-  final last7 = List.generate(7, (i) {
-    final date = now.subtract(Duration(days: 6 - i));
-    return _DailyCount(date, 2 + (i * 3 % 7)); // deterministic variation
+  final last7Cases = List.generate(7, (i) {
+    final date = DateTime(now.year, now.month, now.day).subtract(Duration(days: 6 - i));
+    final count = patients.where((p) {
+      final reg = DateTime(p.registeredAt.year, p.registeredAt.month, p.registeredAt.day);
+      return reg.isAtSameMomentAs(date);
+    }).length;
+    return DailyCount(date, count);
+  });
+
+  // Real 7-day referral counts
+  final last7Referrals = List.generate(7, (i) {
+    final date = DateTime(now.year, now.month, now.day).subtract(Duration(days: 6 - i));
+    final count = referrals.where((r) {
+      final created = DateTime(r.createdAt.year, r.createdAt.month, r.createdAt.day);
+      return created.isAtSameMomentAs(date);
+    }).length;
+    return DailyCount(date, count);
   });
 
   return DashboardSummary(
@@ -69,9 +119,11 @@ final dashboardProvider = Provider<DashboardSummary>((ref) {
     lowRiskCount: lowRiskCount,
     completedReferrals: completedReferrals,
     droppedReferrals: droppedReferrals,
-    last7DaysCases: last7,
+    pendingFollowUps: pendingFollowUps,
+    overdueFollowUps: overdueFollowUps,
+    lowStockCount: lowStockCount,
+    pendingTestsCount: pendingTestsCount,
+    last7DaysCases: last7Cases,
+    last7DaysReferrals: last7Referrals,
   );
 });
-
-// Re-export for use in charts
-typedef DailyCount = _DailyCount;

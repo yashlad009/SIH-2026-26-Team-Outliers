@@ -4,10 +4,16 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/date_formatters.dart';
 
 class CaseVolumeChart extends StatelessWidget {
-  /// List of (date, count) pairs, oldest first
+  /// List of (date, count) pairs for cases
   final List<MapEntry<DateTime, int>> data;
+  /// Optional list of (date, count) pairs for referrals
+  final List<MapEntry<DateTime, int>>? referralData;
 
-  const CaseVolumeChart({super.key, required this.data});
+  const CaseVolumeChart({
+    super.key,
+    required this.data,
+    this.referralData,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -17,8 +23,14 @@ class CaseVolumeChart extends StatelessWidget {
       return FlSpot(e.key.toDouble(), e.value.value.toDouble());
     }).toList();
 
+    final refSpots = referralData != null && referralData!.isNotEmpty
+        ? referralData!.asMap().entries.map((e) {
+            return FlSpot(e.key.toDouble(), e.value.value.toDouble());
+          }).toList()
+        : <FlSpot>[];
+
     return SizedBox(
-      height: 160,
+      height: 170,
       child: LineChart(
         LineChartData(
           gridData: FlGridData(
@@ -67,9 +79,21 @@ class CaseVolumeChart extends StatelessWidget {
               dotData: const FlDotData(show: true),
               belowBarData: BarAreaData(
                 show: true,
-                color: AppColors.primary.withOpacity(0.08),
+                color: AppColors.primary.withValues(alpha: 0.08),
               ),
             ),
+            if (refSpots.isNotEmpty)
+              LineChartBarData(
+                spots: refSpots,
+                isCurved: true,
+                color: AppColors.riskMedium,
+                barWidth: 2.0,
+                dotData: const FlDotData(show: true),
+                belowBarData: BarAreaData(
+                  show: true,
+                  color: AppColors.riskMedium.withValues(alpha: 0.05),
+                ),
+              ),
           ],
         ),
       ),
