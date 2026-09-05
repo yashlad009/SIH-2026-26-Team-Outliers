@@ -75,7 +75,9 @@ class _CreateFollowUpDialogState extends ConsumerState<CreateFollowUpDialog> {
         id: '',
         patientId: widget.patient.id,
         patientName: widget.patient.name,
-        assignedToUid: user.role.name == 'chw' ? user.uid : 'assigned-chw-uid',
+        assignedToUid: widget.patient.registeredByUid.isNotEmpty
+            ? widget.patient.registeredByUid
+            : (user.role.name == 'chw' ? user.uid : 'assigned-chw-uid'),
         title: _titleCtrl.text.trim(),
         description: _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
         category: _category,
@@ -88,6 +90,10 @@ class _CreateFollowUpDialogState extends ConsumerState<CreateFollowUpDialog> {
       await FollowUpRepository().createTask(task);
       ref.invalidate(allFollowUpTasksProvider);
       ref.invalidate(followUpTasksByPatientProvider(widget.patient.id));
+      if (widget.patient.registeredByUid.isNotEmpty) {
+        ref.invalidate(followUpTasksByChwProvider(widget.patient.registeredByUid));
+      }
+      ref.invalidate(followUpTasksByChwProvider(user.uid));
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

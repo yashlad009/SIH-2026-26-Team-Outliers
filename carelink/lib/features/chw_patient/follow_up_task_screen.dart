@@ -6,6 +6,7 @@ import '../../core/widgets/empty_state.dart';
 import '../../core/widgets/loading_state.dart';
 import '../../data/repositories/follow_up_repository.dart';
 import '../../models/follow_up_task_model.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/inventory_provider.dart';
 
 class FollowUpTaskScreen extends ConsumerWidget {
@@ -16,8 +17,11 @@ class FollowUpTaskScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final tasksAsync = chwUid != null
-        ? ref.watch(followUpTasksByChwProvider(chwUid!))
+    final activeUser = ref.watch(activeUserProfileProvider);
+    final effectiveChwUid = chwUid ?? activeUser?.uid;
+
+    final tasksAsync = effectiveChwUid != null
+        ? ref.watch(followUpTasksByChwProvider(effectiveChwUid))
         : ref.watch(allFollowUpTasksProvider);
 
     final body = tasksAsync.when(
@@ -29,13 +33,25 @@ class FollowUpTaskScreen extends ConsumerWidget {
             icon: Icons.task_outlined,
           );
         }
-        final overdue = tasks.where((t) => t.isOverdue).toList();
-        final pending =
-            tasks.where((t) => !t.isDone && !t.isOverdue).toList();
-        final done = tasks.where((t) => t.isDone).toList();
+        final overdue = tasks.where((t) => t.isOverdue).toList()
+          ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        final pending = tasks.where((t) => !t.isDone && !t.isOverdue).toList()
+          ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        final done = tasks.where((t) => t.isDone).toList()
+          ..sort((a, b) {
+            if (a.completedAt != null && b.completedAt != null) {
+              return b.completedAt!.compareTo(a.completedAt!);
+            }
+            return b.createdAt.compareTo(a.createdAt);
+          });
 
         return RefreshIndicator(
-          onRefresh: () async => ref.invalidate(allFollowUpTasksProvider),
+          onRefresh: () async {
+            ref.invalidate(allFollowUpTasksProvider);
+            if (effectiveChwUid != null) {
+              ref.invalidate(followUpTasksByChwProvider(effectiveChwUid));
+            }
+          },
           child: ListView(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
             children: [

@@ -16,12 +16,9 @@ class FollowUpRepository {
   }
 
   Stream<List<FollowUpTaskModel>> watchTasksByChw(String chwUid) {
-    return _col
-        .where('assignedToUid', isEqualTo: chwUid)
-        .snapshots(includeMetadataChanges: true)
-        .map((s) {
+    return _col.snapshots(includeMetadataChanges: true).map((s) {
       final list = s.docs.map(FollowUpTaskModel.fromFirestore).toList();
-      list.sort((a, b) => a.dueDate.compareTo(b.dueDate));
+      list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       return list;
     });
   }

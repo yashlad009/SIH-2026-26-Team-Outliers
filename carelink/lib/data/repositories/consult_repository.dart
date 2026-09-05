@@ -52,6 +52,17 @@ class ConsultRepository {
     });
   }
 
+  Stream<List<ConsultRequestModel>> watchConsultsByDoctor(String doctorUid) {
+    return _col
+        .where('doctorUid', isEqualTo: doctorUid)
+        .snapshots(includeMetadataChanges: true)
+        .map((s) {
+      final list = s.docs.map(ConsultRequestModel.fromFirestore).toList();
+      list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return list;
+    });
+  }
+
   Stream<List<ConsultRequestModel>> watchConsultsByPatient(String patientId) {
     return _col
         .where('patientId', isEqualTo: patientId)

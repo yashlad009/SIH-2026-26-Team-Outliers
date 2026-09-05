@@ -15,8 +15,9 @@ import '../../models/patient_model.dart';
 
 import '../../providers/consult_provider.dart';
 import '../../providers/referral_provider.dart';
-import '../../models/triage_result_model.dart';
 import '../../models/referral_model.dart';
+
+import 'high_risk_patients_screen.dart';
 
 class DoctorHomeScreen extends ConsumerStatefulWidget {
   const DoctorHomeScreen({super.key});
@@ -80,9 +81,12 @@ class _DoctorOverviewTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(activeUserProfileProvider);
-    final patientsAsync = ref.watch(patientListProvider);
+    final doctorPatientsAsync = user != null
+        ? ref.watch(doctorPatientsProvider(user.uid))
+        : const AsyncData<List<PatientModel>>([]);
     final pendingAsync = ref.watch(pendingConsultsProvider);
     final referralsAsync = ref.watch(allReferralsProvider);
+    final highRiskAsync = ref.watch(highRiskPatientsProvider);
 
     final pendingCount = pendingAsync.valueOrNull?.length ?? 0;
     final activeReferralsCount = referralsAsync.valueOrNull
@@ -92,16 +96,16 @@ class _DoctorOverviewTab extends ConsumerWidget {
             .length ??
         0;
 
-    final highRiskCount = patientsAsync.valueOrNull
-            ?.where((p) => p.triageRisk == RiskLevel.high)
-            .length ??
-        0;
+    final highRiskCount = highRiskAsync.valueOrNull?.length ?? 0;
 
     return RefreshIndicator(
       onRefresh: () async {
         ref.invalidate(patientListProvider);
         ref.invalidate(pendingConsultsProvider);
         ref.invalidate(allReferralsProvider);
+        if (user != null) {
+          ref.invalidate(doctorConsultsProvider(user.uid));
+        }
       },
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
@@ -146,7 +150,12 @@ class _DoctorOverviewTab extends ConsumerWidget {
                     count: '$highRiskCount',
                     icon: Icons.warning_amber_rounded,
                     color: AppColors.riskHigh,
-                    onTap: () {},
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const HighRiskPatientsScreen(),
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -192,11 +201,12 @@ class _DoctorOverviewTab extends ConsumerWidget {
             Text('Patient Records',
                 style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 8),
-            patientsAsync.when(
+            doctorPatientsAsync.when(
               data: (patients) {
                 if (patients.isEmpty) {
                   return const EmptyState(
-                    message: 'No patients registered yet',
+                    message: 'No accepted patient records yet',
+                    subtitle: 'Patients from accepted consultations will appear here',
                     icon: Icons.people_outline,
                   );
                 }
@@ -209,7 +219,7 @@ class _DoctorOverviewTab extends ConsumerWidget {
               },
               loading: () => const LoadingListItem(),
               error: (e, _) => EmptyState(
-                  message: 'Failed to load patients',
+                  message: 'Failed to load patient records',
                   subtitle: e.toString(),
                   icon: Icons.error_outline),
             ),

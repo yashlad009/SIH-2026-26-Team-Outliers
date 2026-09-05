@@ -177,7 +177,7 @@ class _OverviewTab extends ConsumerWidget {
                       onTap: () => Navigator.push(
                           context,
                           MaterialPageRoute(
-                              builder: (_) => const FollowUpTaskScreen())))),
+                              builder: (_) => FollowUpTaskScreen(chwUid: user?.uid))))),
             ]),
             const SizedBox(height: 24),
             Text('Quick Actions',
