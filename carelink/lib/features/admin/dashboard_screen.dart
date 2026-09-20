@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/utils/date_formatters.dart';
 import '../../core/widgets/app_scaffold.dart';
+import '../../core/widgets/carelink_logo.dart';
 import '../../core/widgets/empty_state.dart';
 import '../../core/widgets/loading_state.dart';
 import '../../core/widgets/risk_badge.dart';
@@ -13,6 +14,7 @@ import '../../models/triage_result_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/dashboard_provider.dart';
 import '../../providers/inventory_provider.dart';
+import '../../providers/locale_provider.dart';
 import '../../providers/patient_provider.dart';
 import '../../providers/referral_provider.dart';
 import '../chw_patient/follow_up_task_screen.dart';
@@ -45,6 +47,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final strings = ref.watch(stringsProvider);
     final pages = [
       _AdminHomeTab(onNavigate: _switchToTab),
       _AdminPatientsTab(
@@ -61,7 +64,13 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
 
     return AppScaffold(
       appBar: AppBar(
-        title: const Text('CareLink — District Admin'),
+        title: Row(
+          children: [
+            const CareLinkLogo(width: 32, height: 32),
+            const SizedBox(width: 8),
+            Text('CareLink — ${strings.roleAdmin}'),
+          ],
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.settings_outlined),
@@ -86,31 +95,31 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
         type: BottomNavigationBarType.fixed,
         selectedItemColor: AppColors.primary,
         unselectedItemColor: AppColors.textSecondary,
-        items: const [
+        items: [
           BottomNavigationBarItem(
-            icon: Icon(Icons.dashboard_outlined),
-            activeIcon: Icon(Icons.dashboard),
-            label: 'Home',
+            icon: const Icon(Icons.dashboard_outlined),
+            activeIcon: const Icon(Icons.dashboard),
+            label: strings.dashboard,
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.people_outline),
-            activeIcon: Icon(Icons.people),
-            label: 'Patients',
+            icon: const Icon(Icons.people_outline),
+            activeIcon: const Icon(Icons.people),
+            label: strings.patients,
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.local_hospital_outlined),
-            activeIcon: Icon(Icons.local_hospital),
-            label: 'Referrals',
+            icon: const Icon(Icons.local_hospital_outlined),
+            activeIcon: const Icon(Icons.local_hospital),
+            label: strings.referrals,
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.business_outlined),
-            activeIcon: Icon(Icons.business),
-            label: 'Facilities',
+            icon: const Icon(Icons.business_outlined),
+            activeIcon: const Icon(Icons.business),
+            label: strings.facility,
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.more_horiz),
-            activeIcon: Icon(Icons.more_horiz),
-            label: 'More',
+            icon: const Icon(Icons.more_horiz),
+            activeIcon: const Icon(Icons.more_horiz),
+            label: strings.viewAll,
           ),
         ],
       ),

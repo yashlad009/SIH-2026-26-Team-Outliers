@@ -17,6 +17,8 @@ import '../../providers/consult_provider.dart';
 import '../../providers/referral_provider.dart';
 import '../../models/referral_model.dart';
 
+import '../../core/widgets/carelink_logo.dart';
+import '../../providers/locale_provider.dart';
 import 'high_risk_patients_screen.dart';
 
 class DoctorHomeScreen extends ConsumerStatefulWidget {
@@ -31,6 +33,7 @@ class _DoctorHomeScreenState extends ConsumerState<DoctorHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final strings = ref.watch(stringsProvider);
     final pages = [
       _DoctorOverviewTab(onTabSwitch: (i) => setState(() => _tab = i)),
       const ConsultQueueScreen(embedded: true),
@@ -39,7 +42,13 @@ class _DoctorHomeScreenState extends ConsumerState<DoctorHomeScreen> {
 
     return AppScaffold(
       appBar: AppBar(
-        title: const Text('CareLink — Doctor'),
+        title: Row(
+          children: [
+            const CareLinkLogo(width: 32, height: 32),
+            const SizedBox(width: 8),
+            Text('CareLink — ${strings.roleDoctor}'),
+          ],
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.settings_outlined),
@@ -56,13 +65,14 @@ class _DoctorHomeScreenState extends ConsumerState<DoctorHomeScreen> {
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _tab,
         onTap: (i) => setState(() => _tab = i),
-        items: const [
+        items: [
           BottomNavigationBarItem(
-              icon: Icon(Icons.home_outlined), label: 'Home'),
+              icon: const Icon(Icons.home_outlined),
+              label: strings.isMr ? 'होम' : (strings.isHi ? 'होम' : 'Home')),
           BottomNavigationBarItem(
-              icon: Icon(Icons.queue_outlined), label: 'Consults'),
+              icon: const Icon(Icons.queue_outlined), label: strings.consultQueue),
           BottomNavigationBarItem(
-              icon: Icon(Icons.local_hospital_outlined), label: 'Referrals'),
+              icon: const Icon(Icons.local_hospital_outlined), label: strings.referrals),
         ],
       ),
     );
