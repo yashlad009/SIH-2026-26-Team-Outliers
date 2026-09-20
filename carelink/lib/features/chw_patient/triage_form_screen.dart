@@ -10,6 +10,8 @@ import '../../models/patient_model.dart';
 import '../../models/triage_result_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/triage_provider.dart';
+import '../../providers/care_orchestration_provider.dart';
+import '../care_orchestration/care_case_detail_screen.dart';
 
 class TriageFormScreen extends ConsumerStatefulWidget {
   final PatientModel patient;
@@ -94,9 +96,30 @@ class _TriageFormScreenState extends ConsumerState<TriageFormScreen> {
       );
       final id = await PatientRepository().saveTriage(triage);
       setState(() => _savedTriageId = id);
+
+      // Trigger Care Orchestration Engine (Smart Assignment, Readiness, Adaptive Route, Min-Trip, Auto Follow-up)
+      final careCase = await ref.read(careOrchestrationEngineProvider).orchestrateCareCase(
+            patient: widget.patient,
+            triage: triage.copyWith(id: id),
+            chwUid: user?.uid ?? 'chw_uid',
+            chwName: user?.displayName ?? 'CHW',
+          );
+
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Triage saved'), backgroundColor: AppColors.riskLow));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Triage saved & Smart Doctor Assigned: ${careCase.assignedDoctorName ?? "Assigned"}'),
+          backgroundColor: AppColors.riskLow,
+          action: SnackBarAction(
+            label: 'VIEW CASE',
+            textColor: Colors.white,
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => CareCaseDetailScreen(careCase: careCase)),
+              );
+            },
+          ),
+        ));
       }
     } catch (e) {
       if (mounted) {

@@ -41,7 +41,7 @@ class _ChwHomeScreenState extends ConsumerState<ChwHomeScreen> {
     final user = ref.watch(activeUserProfileProvider);
     final strings = ref.watch(stringsProvider);
     final pages = [
-      _OverviewTab(user: user),
+      _OverviewTab(user: user, onTabSwitch: (i) => setState(() => _tab = i)),
       const PatientListScreen(embedded: true),
       FollowUpTaskScreen(embedded: true, chwUid: user?.uid),
       const ReferralListScreen(embedded: true),
@@ -79,6 +79,7 @@ class _ChwHomeScreenState extends ConsumerState<ChwHomeScreen> {
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _tab,
         onTap: (i) => setState(() => _tab = i),
+        type: BottomNavigationBarType.fixed,
         items: [
           BottomNavigationBarItem(
               icon: const Icon(Icons.home_outlined),
@@ -121,7 +122,8 @@ class _ChwHomeScreenState extends ConsumerState<ChwHomeScreen> {
 
 class _OverviewTab extends ConsumerWidget {
   final dynamic user;
-  const _OverviewTab({this.user});
+  final ValueChanged<int>? onTabSwitch;
+  const _OverviewTab({this.user, this.onTabSwitch});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -165,7 +167,8 @@ class _OverviewTab extends ConsumerWidget {
                       label: 'Patients',
                       value: '$totalPatients',
                       icon: Icons.people_alt_outlined,
-                      color: AppColors.primary)),
+                      color: AppColors.primary,
+                      onTap: onTabSwitch != null ? () => onTabSwitch!(1) : null)),
               const SizedBox(width: 12),
               Expanded(
                   child: _StatCard(

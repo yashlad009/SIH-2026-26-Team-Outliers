@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'connectivity_banner.dart';
+import 'role_switcher_banner.dart';
 
-/// A shared scaffold that always shows the connectivity banner at the top.
+/// A shared scaffold that shows the demo role switcher & connectivity banner at the top.
 class AppScaffold extends StatelessWidget {
   final PreferredSizeWidget? appBar;
   final Widget body;
@@ -33,6 +34,7 @@ class AppScaffold extends StatelessWidget {
       resizeToAvoidBottomInset: resizeToAvoidBottomInset,
       body: Column(
         children: [
+          const RoleSwitcherBanner(),
           const ConnectivityBanner(),
           Expanded(child: body),
         ],

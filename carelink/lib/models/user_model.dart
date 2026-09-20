@@ -33,6 +33,9 @@ class UserModel {
   final UserRole role;
   final String? facilityName;
   final String? facilityId;
+  final String? specialty;
+  final bool isOnDuty;
+  final int activeWorkload;
   final DateTime createdAt;
 
   const UserModel({
@@ -42,6 +45,9 @@ class UserModel {
     required this.role,
     this.facilityName,
     this.facilityId,
+    this.specialty,
+    this.isOnDuty = true,
+    this.activeWorkload = 0,
     required this.createdAt,
   });
 
@@ -54,6 +60,9 @@ class UserModel {
       role: UserRoleX.fromString(data['role'] as String? ?? 'chw'),
       facilityName: data['facilityName'] as String?,
       facilityId: data['facilityId'] as String?,
+      specialty: data['specialty'] as String?,
+      isOnDuty: data['isOnDuty'] as bool? ?? true,
+      activeWorkload: (data['activeWorkload'] as num?)?.toInt() ?? 0,
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
   }
@@ -64,6 +73,9 @@ class UserModel {
         'role': role.name,
         'facilityName': facilityName,
         'facilityId': facilityId,
+        'specialty': specialty,
+        'isOnDuty': isOnDuty,
+        'activeWorkload': activeWorkload,
         'createdAt': Timestamp.fromDate(createdAt),
       };
 
@@ -74,6 +86,9 @@ class UserModel {
     UserRole? role,
     String? facilityName,
     String? facilityId,
+    String? specialty,
+    bool? isOnDuty,
+    int? activeWorkload,
     DateTime? createdAt,
   }) =>
       UserModel(
@@ -83,6 +98,9 @@ class UserModel {
         role: role ?? this.role,
         facilityName: facilityName ?? this.facilityName,
         facilityId: facilityId ?? this.facilityId,
+        specialty: specialty ?? this.specialty,
+        isOnDuty: isOnDuty ?? this.isOnDuty,
+        activeWorkload: activeWorkload ?? this.activeWorkload,
         createdAt: createdAt ?? this.createdAt,
       );
 }

@@ -25,6 +25,9 @@ class SeedData {
       'displayName': 'Sunita Kamble (CHW)',
       'role': 'chw',
       'facilityName': 'Nashik PHC Ward 3',
+      'specialty': null,
+      'isOnDuty': true,
+      'activeWorkload': 0,
     },
     {
       'email': 'doctor@carelink.demo',
@@ -32,6 +35,9 @@ class SeedData {
       'displayName': 'Dr. Rajesh Patil',
       'role': 'doctor',
       'facilityName': 'Nashik PHC Ward 3',
+      'specialty': 'Cardiology',
+      'isOnDuty': true,
+      'activeWorkload': 2,
     },
     {
       'email': 'admin@carelink.demo',
@@ -39,6 +45,29 @@ class SeedData {
       'displayName': 'Priya Deshmukh (Admin)',
       'role': 'admin',
       'facilityName': 'Nashik District Health Office',
+      'specialty': null,
+      'isOnDuty': true,
+      'activeWorkload': 0,
+    },
+    {
+      'email': 'obgyn.doc@carelink.demo',
+      'password': 'demo1234',
+      'displayName': 'Dr. Anita Sharma',
+      'role': 'doctor',
+      'facilityName': 'Nashik Civil Hospital',
+      'specialty': 'Obstetrics & Gynecology',
+      'isOnDuty': true,
+      'activeWorkload': 1,
+    },
+    {
+      'email': 'pulmo.doc@carelink.demo',
+      'password': 'demo1234',
+      'displayName': 'Dr. Vikram Deshmukh',
+      'role': 'doctor',
+      'facilityName': 'Igatpuri Sub-District Hospital',
+      'specialty': 'Pulmonology',
+      'isOnDuty': true,
+      'activeWorkload': 3,
     },
   ];
 
@@ -53,27 +82,30 @@ class SeedData {
         UserCredential cred;
         try {
           cred = await _auth.createUserWithEmailAndPassword(
-            email: acc['email']!,
-            password: acc['password']!,
+            email: acc['email'] as String,
+            password: acc['password'] as String,
           );
         } on FirebaseAuthException catch (e) {
           if (e.code == 'email-already-in-use') {
             cred = await _auth.signInWithEmailAndPassword(
-              email: acc['email']!,
-              password: acc['password']!,
+              email: acc['email'] as String,
+              password: acc['password'] as String,
             );
           } else {
             rethrow;
           }
         }
         final uid = cred.user!.uid;
-        uids[acc['role']!] = uid;
+        uids[acc['role'] as String] = uid;
 
         await _db.doc(FirestorePaths.userDoc(uid)).set({
           'email': acc['email'],
           'displayName': acc['displayName'],
           'role': acc['role'],
           'facilityName': acc['facilityName'],
+          'specialty': acc['specialty'],
+          'isOnDuty': acc['isOnDuty'],
+          'activeWorkload': acc['activeWorkload'],
           'createdAt': Timestamp.now(),
         }, SetOptions(merge: true));
 
@@ -85,6 +117,9 @@ class SeedData {
 
     final chwUid = uids['chw'] ?? 'chw_uid';
     final doctorUid = uids['doctor'] ?? 'doctor_uid';
+
+    // 1b. Seed Facilities
+    await _seedFacilities();
 
     // 2. Seed patients
     final patients = _buildPatients(chwUid);
@@ -770,5 +805,61 @@ class SeedData {
       }
     }
     print('✅ Follow-up tasks seeded (${tasks.length} items)');
+  }
+
+  // ── Facilities ─────────────────────────────────────────────────────────────
+  static Future<void> _seedFacilities() async {
+    final facilities = [
+      {
+        'id': 'phc_ward_3',
+        'name': 'Nashik PHC Ward 3',
+        'tier': 'Primary',
+        'isOperational': true,
+        'availableSpecialties': ['General Medicine', 'Pediatrics'],
+        'availableDiagnostics': ['CBC + Blood Sugar', 'Urine Protein + Sugar', 'Routine Vitals Check'],
+        'availableMedicines': ['Paracetamol 500mg', 'Metformin 500mg', 'ORS Sachets', 'Iron + Folic Acid'],
+        'bedCapacity': 10,
+        'occupiedBeds': 3,
+        'district': 'Nashik',
+        'contactPhone': '+91 253 234 5678',
+      },
+      {
+        'id': 'sdh_igatpuri',
+        'name': 'Igatpuri Sub-District Hospital',
+        'tier': 'Secondary',
+        'isOperational': true,
+        'availableSpecialties': ['General Medicine', 'Pulmonology', 'Pediatrics'],
+        'availableDiagnostics': ['CBC + Blood Sugar', 'Chest X-Ray', 'Urine Protein + Sugar', 'Routine Vitals Check'],
+        'availableMedicines': ['Salbutamol Inhaler', 'Paracetamol 500mg', 'Metformin 500mg', 'Amoxicillin 250mg', 'ORS Sachets'],
+        'bedCapacity': 50,
+        'occupiedBeds': 32,
+        'district': 'Nashik',
+        'contactPhone': '+91 253 876 5432',
+      },
+      {
+        'id': 'civil_nashik',
+        'name': 'Nashik Civil Hospital',
+        'tier': 'Tertiary',
+        'isOperational': true,
+        'availableSpecialties': ['Cardiology', 'Obstetrics & Gynecology', 'Pulmonology', 'Pediatrics', 'General Medicine'],
+        'availableDiagnostics': ['ECG', 'Echocardiogram', 'Chest X-Ray', 'CBC + Blood Sugar', 'Urine Protein + Sugar'],
+        'availableMedicines': ['Amlodipine 5mg', 'Salbutamol Inhaler', 'Metformin 500mg', 'Paracetamol 500mg', 'Insulin Regular', 'Amoxicillin 250mg'],
+        'bedCapacity': 300,
+        'occupiedBeds': 240,
+        'district': 'Nashik',
+        'contactPhone': '+91 253 999 1122',
+      },
+    ];
+
+    for (final f in facilities) {
+      try {
+        final docId = f['id'] as String;
+        final data = Map<String, dynamic>.from(f)..remove('id');
+        await _db.collection(FirestorePaths.facilities).doc(docId).set(data, SetOptions(merge: true));
+      } catch (e) {
+        print('⚠️  Facility: $e');
+      }
+    }
+    print('✅ Healthcare Facilities seeded (${facilities.length} items)');
   }
 }
