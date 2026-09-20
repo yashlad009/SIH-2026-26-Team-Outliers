@@ -145,8 +145,11 @@ class AppStringsMr {
   static const String language = 'भाषा';
   static const String english = 'English';
   static const String marathi = 'मराठी';
+  static const String hindi = 'हिन्दी';
   static const String appVersion = 'अ‍ॅप आवृत्ती';
   static const String demoMode = 'डेमो मोड';
+  static const String profile = 'प्रोफाइल';
+  static const String facility = 'आरोग्य केंद्र';
 
   // ── Common ────────────────────────────────────────────────────────────────
   static const String save = 'जतन करा';

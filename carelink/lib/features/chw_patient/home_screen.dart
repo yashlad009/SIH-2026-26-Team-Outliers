@@ -22,7 +22,9 @@ import 'follow_up_task_screen.dart';
 import '../referral/referral_list_screen.dart';
 import '../inventory/medicine_stock_screen.dart';
 import '../settings/settings_screen.dart';
+import '../../core/widgets/carelink_logo.dart';
 import '../../core/widgets/risk_badge.dart';
+import '../../providers/locale_provider.dart';
 
 class ChwHomeScreen extends ConsumerStatefulWidget {
   const ChwHomeScreen({super.key});
@@ -37,6 +39,7 @@ class _ChwHomeScreenState extends ConsumerState<ChwHomeScreen> {
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(activeUserProfileProvider);
+    final strings = ref.watch(stringsProvider);
     final pages = [
       _OverviewTab(user: user),
       const PatientListScreen(embedded: true),
@@ -46,7 +49,13 @@ class _ChwHomeScreenState extends ConsumerState<ChwHomeScreen> {
 
     return AppScaffold(
       appBar: AppBar(
-        title: const Text('CareLink'),
+        title: const Row(
+          children: [
+            CareLinkLogo(width: 32, height: 32),
+            SizedBox(width: 8),
+            Text('CareLink'),
+          ],
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.settings_outlined),
@@ -70,15 +79,16 @@ class _ChwHomeScreenState extends ConsumerState<ChwHomeScreen> {
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _tab,
         onTap: (i) => setState(() => _tab = i),
-        items: const [
+        items: [
           BottomNavigationBarItem(
-              icon: Icon(Icons.home_outlined), label: 'Home'),
+              icon: const Icon(Icons.home_outlined),
+              label: strings.isMr ? 'होम' : (strings.isHi ? 'होम' : 'Home')),
           BottomNavigationBarItem(
-              icon: Icon(Icons.people_outline), label: 'Patients'),
+              icon: const Icon(Icons.people_outline), label: strings.patients),
           BottomNavigationBarItem(
-              icon: Icon(Icons.task_outlined), label: 'Follow-ups'),
+              icon: const Icon(Icons.task_outlined), label: strings.followUp),
           BottomNavigationBarItem(
-              icon: Icon(Icons.local_hospital_outlined), label: 'Referrals'),
+              icon: const Icon(Icons.local_hospital_outlined), label: strings.referrals),
         ],
       ),
     );

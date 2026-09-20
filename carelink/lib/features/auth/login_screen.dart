@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/utils/validators.dart';
 import '../../core/widgets/connectivity_banner.dart';
+import '../../core/widgets/carelink_logo.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/locale_provider.dart';
 import '../../models/user_model.dart';
@@ -107,25 +108,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   children: [
                     const SizedBox(height: 48),
                     // Logo / Branding
-                    Container(
+                    const CareLinkLogo(
                       width: 80,
                       height: 80,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.15),
-                            blurRadius: 20,
-                            offset: const Offset(0, 8),
-                          ),
-                        ],
-                      ),
-                      child: const Icon(
-                        Icons.favorite_rounded,
-                        color: AppColors.primary,
-                        size: 44,
-                      ),
                     ),
                     const SizedBox(height: 16),
                     Text(
@@ -145,19 +130,35 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         fontSize: 14,
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    // Language toggle
+                    const SizedBox(height: 12),
+                    // 3-Language Toggle Pill
                     GestureDetector(
-                      onTap: () => ref.read(localeProvider.notifier).toggle(),
+                      onTap: () => ref.read(localeProvider.notifier).cycle(),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                         decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.15),
                           border: Border.all(color: Colors.white54),
                           borderRadius: BorderRadius.circular(20),
                         ),
-                        child: Text(
-                          locale == AppLocale.en ? 'मराठी' : 'English',
-                          style: const TextStyle(color: Colors.white, fontSize: 13),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.language, color: Colors.white, size: 16),
+                            const SizedBox(width: 6),
+                            Text(
+                              locale == AppLocale.en
+                                  ? 'English (मराठी/हिन्दी)'
+                                  : (locale == AppLocale.mr
+                                      ? 'मराठी (English/हिन्दी)'
+                                      : 'हिन्दी (English/मराठी)'),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
