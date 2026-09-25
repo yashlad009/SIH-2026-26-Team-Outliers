@@ -10,7 +10,7 @@ class RoleSwitcherBanner extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final activeUser = ref.watch(activeUserProfileProvider);
-    final currentRole = activeUser?.role ?? UserRole.chw;
+    final activeUid = activeUser?.uid ?? 'chw_uid';
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -34,9 +34,10 @@ class RoleSwitcherBanner extends ConsumerWidget {
             _roleChip(
               ref: ref,
               context: context,
+              uid: 'chw_uid',
               role: UserRole.chw,
               label: 'CHW',
-              isSelected: currentRole == UserRole.chw,
+              isSelected: activeUid == 'chw_uid',
               email: 'chw@carelink.demo',
               displayName: 'Sunita Kamble (CHW)',
               facility: 'Nashik PHC Ward 3',
@@ -45,9 +46,23 @@ class RoleSwitcherBanner extends ConsumerWidget {
             _roleChip(
               ref: ref,
               context: context,
+              uid: 'demo_doctor_vikram',
               role: UserRole.doctor,
-              label: 'Doctor',
-              isSelected: currentRole == UserRole.doctor,
+              label: 'Dr. Vikram (Pulmonology)',
+              isSelected: activeUid == 'demo_doctor_vikram',
+              email: 'doctor.vikram@carelink.demo',
+              displayName: 'Dr. Vikram Deshmukh',
+              facility: 'Nashik Civil Hospital',
+              specialty: 'Pulmonology',
+            ),
+            const SizedBox(width: 4),
+            _roleChip(
+              ref: ref,
+              context: context,
+              uid: 'doctor_uid',
+              role: UserRole.doctor,
+              label: 'Dr. Rajesh',
+              isSelected: activeUid == 'doctor_uid',
               email: 'doctor@carelink.demo',
               displayName: 'Dr. Rajesh Patil',
               facility: 'Nashik PHC Ward 3',
@@ -57,9 +72,10 @@ class RoleSwitcherBanner extends ConsumerWidget {
             _roleChip(
               ref: ref,
               context: context,
+              uid: 'admin_uid',
               role: UserRole.admin,
               label: 'Control Room',
-              isSelected: currentRole == UserRole.admin,
+              isSelected: activeUid == 'admin_uid',
               email: 'admin@carelink.demo',
               displayName: 'Priya Deshmukh (Admin)',
               facility: 'Nashik District Health Office',
@@ -73,6 +89,7 @@ class RoleSwitcherBanner extends ConsumerWidget {
   Widget _roleChip({
     required WidgetRef ref,
     required BuildContext context,
+    required String uid,
     required UserRole role,
     required String label,
     required bool isSelected,
@@ -85,18 +102,14 @@ class RoleSwitcherBanner extends ConsumerWidget {
       onTap: () {
         if (isSelected) return;
         final newUser = UserModel(
-          uid: role == UserRole.doctor
-              ? 'doctor_uid'
-              : role == UserRole.admin
-                  ? 'admin_uid'
-                  : 'chw_uid',
+          uid: uid,
           email: email,
           displayName: displayName,
           role: role,
           facilityName: facility,
           specialty: specialty,
           isOnDuty: true,
-          activeWorkload: role == UserRole.doctor ? 2 : 0,
+          activeWorkload: role == UserRole.doctor ? 1 : 0,
           createdAt: DateTime.now(),
         );
         ref.read(userProfileProvider.notifier).set(newUser);
@@ -129,3 +142,4 @@ class RoleSwitcherBanner extends ConsumerWidget {
     );
   }
 }
+

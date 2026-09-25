@@ -6,9 +6,15 @@ final consultRepositoryProvider = Provider<ConsultRepository>((ref) {
   return ConsultRepository();
 });
 
-/// All pending consult requests — for doctor's queue
+/// All pending consult requests — for default queue
 final pendingConsultsProvider = StreamProvider<List<ConsultRequestModel>>((ref) {
   return ref.watch(consultRepositoryProvider).watchPendingConsults();
+});
+
+/// Pending consult requests filtered for a specific doctor (by doctorUid)
+final pendingConsultsForDoctorProvider =
+    StreamProvider.family<List<ConsultRequestModel>, String>((ref, doctorUid) {
+  return ref.watch(consultRepositoryProvider).watchPendingConsultsForDoctor(doctorUid);
 });
 
 /// All consults for the current CHW (by chwUid)
@@ -37,3 +43,4 @@ final consultMessagesProvider =
     StreamProvider.family<List<ConsultMessage>, String>((ref, consultId) {
   return ref.watch(consultRepositoryProvider).watchMessages(consultId);
 });
+

@@ -23,6 +23,14 @@ final allFacilitiesProvider = StreamProvider<List<FacilityModel>>((ref) {
   return ref.watch(facilityRepositoryProvider).watchAllFacilities();
 });
 
+final allDoctorsProvider = StreamProvider<List<UserModel>>((ref) {
+  return FirebaseFirestore.instance
+      .collection(FirestorePaths.users)
+      .where('role', isEqualTo: 'doctor')
+      .snapshots()
+      .map((s) => s.docs.map(UserModel.fromFirestore).toList());
+});
+
 final allCareCasesProvider = StreamProvider<List<CareCaseModel>>((ref) {
   return ref.watch(careCaseRepositoryProvider).watchAllCareCases();
 });

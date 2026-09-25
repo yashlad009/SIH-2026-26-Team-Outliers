@@ -12,49 +12,127 @@ import '../../providers/consult_provider.dart';
 import 'consult_chat_screen.dart';
 import 'consult_detail_screen.dart';
 
+import '../../models/user_model.dart';
+
 class ConsultQueueScreen extends ConsumerWidget {
   final bool embedded;
   const ConsultQueueScreen({super.key, this.embedded = false});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final pendingAsync = ref.watch(pendingConsultsProvider);
+    final activeUser = ref.watch(activeUserProfileProvider);
+    final activeDoctorUid = activeUser?.uid ?? 'demo_doctor_vikram';
+    final pendingAsync = ref.watch(pendingConsultsForDoctorProvider(activeDoctorUid));
 
-    final body = pendingAsync.when(
-      data: (consults) {
-        if (consults.isEmpty) {
-          return const EmptyState(
-            message: 'No pending consultations',
-            subtitle: 'Consultation requests from CHWs will appear here',
-            icon: Icons.queue_outlined,
-          );
-        }
-        return RefreshIndicator(
-          onRefresh: () async => ref.invalidate(pendingConsultsProvider),
-          child: ListView.builder(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
-            itemCount: consults.length,
-            itemBuilder: (_, i) => _ConsultCard(consult: consults[i]),
+    final body = Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+          child: _buildDoctorIdentityBanner(activeUser),
+        ),
+        Expanded(
+          child: pendingAsync.when(
+            data: (consults) {
+              if (consults.isEmpty) {
+                return const EmptyState(
+                  message: 'No pending consultations',
+                  subtitle: 'Consultation requests assigned to this doctor will appear here',
+                  icon: Icons.queue_outlined,
+                );
+              }
+              return RefreshIndicator(
+                onRefresh: () async => ref.invalidate(pendingConsultsForDoctorProvider(activeDoctorUid)),
+                child: ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 80),
+                  itemCount: consults.length,
+                  itemBuilder: (_, i) => _ConsultCard(consult: consults[i]),
+                ),
+              );
+            },
+            loading: () => ListView(
+              children: List.generate(
+                  3,
+                  (_) => const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 4, horizontal: 16),
+                      child: LoadingListItem())),
+            ),
+            error: (e, _) => EmptyState(
+                message: 'Failed to load queue',
+                subtitle: e.toString(),
+                icon: Icons.error_outline),
           ),
-        );
-      },
-      loading: () => ListView(
-        children: List.generate(
-            3,
-            (_) => const Padding(
-                padding: EdgeInsets.symmetric(vertical: 4, horizontal: 16),
-                child: LoadingListItem())),
-      ),
-      error: (e, _) => EmptyState(
-          message: 'Failed to load queue',
-          subtitle: e.toString(),
-          icon: Icons.error_outline),
+        ),
+      ],
     );
 
     if (embedded) return body;
     return Scaffold(
       appBar: AppBar(title: const Text('Consultation Queue')),
       body: body,
+    );
+  }
+
+  Widget _buildDoctorIdentityBanner(UserModel? user) {
+    final name = user?.displayName ?? 'Dr. Vikram Deshmukh';
+    final specialty = user?.specialty ?? 'Cardiology';
+    final facility = user?.facilityName ?? 'Nashik Civil Hospital';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.primaryContainer,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          const CircleAvatar(
+            radius: 20,
+            backgroundColor: AppColors.primary,
+            child: Icon(Icons.medical_services_outlined, color: Colors.white, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      'DOCTOR QUEUE  ·  ',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.5,
+                        color: AppColors.primary.withValues(alpha: 0.8),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: Colors.green.shade700,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: const Text('🟢 ON DUTY', style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: Colors.white)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  name,
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppColors.primaryDark),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  '$specialty  ·  $facility',
+                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

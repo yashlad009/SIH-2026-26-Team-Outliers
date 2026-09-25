@@ -20,6 +20,7 @@ class SeedData {
   // ── Demo Accounts ──────────────────────────────────────────────────────────
   static const _demoAccounts = [
     {
+      'fixedUid': 'chw_uid',
       'email': 'chw@carelink.demo',
       'password': 'demo1234',
       'displayName': 'Sunita Kamble (CHW)',
@@ -30,6 +31,7 @@ class SeedData {
       'activeWorkload': 0,
     },
     {
+      'fixedUid': 'doctor_uid',
       'email': 'doctor@carelink.demo',
       'password': 'demo1234',
       'displayName': 'Dr. Rajesh Patil',
@@ -40,6 +42,7 @@ class SeedData {
       'activeWorkload': 2,
     },
     {
+      'fixedUid': 'admin_uid',
       'email': 'admin@carelink.demo',
       'password': 'demo1234',
       'displayName': 'Priya Deshmukh (Admin)',
@@ -50,6 +53,7 @@ class SeedData {
       'activeWorkload': 0,
     },
     {
+      'fixedUid': 'obgyn_doctor_uid',
       'email': 'obgyn.doc@carelink.demo',
       'password': 'demo1234',
       'displayName': 'Dr. Anita Sharma',
@@ -60,45 +64,48 @@ class SeedData {
       'activeWorkload': 1,
     },
     {
-      'email': 'pulmo.doc@carelink.demo',
+      'fixedUid': 'demo_doctor_vikram',
+      'email': 'doctor.vikram@carelink.demo',
       'password': 'demo1234',
       'displayName': 'Dr. Vikram Deshmukh',
       'role': 'doctor',
-      'facilityName': 'Igatpuri Sub-District Hospital',
+      'facilityName': 'Nashik Civil Hospital',
       'specialty': 'Pulmonology',
       'isOnDuty': true,
-      'activeWorkload': 3,
+      'activeWorkload': 1,
     },
   ];
 
   static Future<void> runSeed() async {
     print('🌱 Starting CareLink seed...');
 
-    final uids = <String, String>{}; // role → uid
+    final uids = <String, String>{
+      'chw': 'chw_uid',
+      'doctor': 'doctor_uid',
+      'admin': 'admin_uid',
+      'obgyn': 'obgyn_doctor_uid',
+      'vikram': 'demo_doctor_vikram',
+    };
 
-    // 1. Create auth users + Firestore profiles
+    // 1. Create auth users + Firestore profiles using fixed UIDs
     for (final acc in _demoAccounts) {
       try {
-        UserCredential cred;
+        final fixedUid = acc['fixedUid'] as String;
         try {
-          cred = await _auth.createUserWithEmailAndPassword(
+          await _auth.createUserWithEmailAndPassword(
             email: acc['email'] as String,
             password: acc['password'] as String,
           );
         } on FirebaseAuthException catch (e) {
           if (e.code == 'email-already-in-use') {
-            cred = await _auth.signInWithEmailAndPassword(
+            await _auth.signInWithEmailAndPassword(
               email: acc['email'] as String,
               password: acc['password'] as String,
             );
-          } else {
-            rethrow;
           }
         }
-        final uid = cred.user!.uid;
-        uids[acc['role'] as String] = uid;
 
-        await _db.doc(FirestorePaths.userDoc(uid)).set({
+        await _db.doc(FirestorePaths.userDoc(fixedUid)).set({
           'email': acc['email'],
           'displayName': acc['displayName'],
           'role': acc['role'],
@@ -109,7 +116,7 @@ class SeedData {
           'createdAt': Timestamp.now(),
         }, SetOptions(merge: true));
 
-        print('✅ User: ${acc['email']}');
+        print('✅ User: ${acc['email']} ($fixedUid)');
       } catch (e) {
         print('⚠️  User ${acc['email']}: $e');
       }
@@ -388,8 +395,8 @@ class SeedData {
         'patientName': 'Anita Bhalerao',
         'chwUid': chwUid,
         'chwName': 'Sunita Kamble (CHW)',
-        'doctorUid': null,
-        'doctorName': null,
+        'doctorUid': 'obgyn_doctor_uid',
+        'doctorName': 'Dr. Anita Sharma',
         'reason': 'Elevated BP in pregnancy — needs obstetric review',
         'urgency': 'urgent',
         'status': 'pending',
@@ -402,8 +409,8 @@ class SeedData {
         'patientName': 'Suresh Mane',
         'chwUid': chwUid,
         'chwName': 'Sunita Kamble (CHW)',
-        'doctorUid': null,
-        'doctorName': null,
+        'doctorUid': 'demo_doctor_vikram',
+        'doctorName': 'Dr. Vikram Deshmukh',
         'reason': 'COPD exacerbation with SpO₂ 89%',
         'urgency': 'urgent',
         'status': 'pending',

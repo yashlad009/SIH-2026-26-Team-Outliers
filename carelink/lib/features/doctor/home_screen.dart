@@ -91,10 +91,9 @@ class _DoctorOverviewTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(activeUserProfileProvider);
-    final doctorPatientsAsync = user != null
-        ? ref.watch(doctorPatientsProvider(user.uid))
-        : const AsyncData<List<PatientModel>>([]);
-    final pendingAsync = ref.watch(pendingConsultsProvider);
+    final activeDoctorUid = user?.uid ?? 'demo_doctor_vikram';
+    final doctorPatientsAsync = ref.watch(doctorPatientsProvider(activeDoctorUid));
+    final pendingAsync = ref.watch(pendingConsultsForDoctorProvider(activeDoctorUid));
     final referralsAsync = ref.watch(allReferralsProvider);
     final highRiskAsync = ref.watch(highRiskPatientsProvider);
 
@@ -108,14 +107,16 @@ class _DoctorOverviewTab extends ConsumerWidget {
 
     final highRiskCount = highRiskAsync.valueOrNull?.length ?? 0;
 
+    final docName = user?.displayName ?? 'Dr. Vikram Deshmukh';
+    final docSpecialty = user?.specialty ?? 'Cardiology';
+    final docFacility = user?.facilityName ?? 'Nashik Civil Hospital';
+
     return RefreshIndicator(
       onRefresh: () async {
         ref.invalidate(patientListProvider);
-        ref.invalidate(pendingConsultsProvider);
+        ref.invalidate(pendingConsultsForDoctorProvider(activeDoctorUid));
         ref.invalidate(allReferralsProvider);
-        if (user != null) {
-          ref.invalidate(doctorConsultsProvider(user.uid));
-        }
+        ref.invalidate(doctorConsultsProvider(activeDoctorUid));
       },
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
@@ -123,13 +124,68 @@ class _DoctorOverviewTab extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Welcome, ${user?.displayName ?? 'Doctor'}',
-              style: Theme.of(context).textTheme.headlineMedium,
+            // Doctor Identity Banner
+            Container(
+              padding: const EdgeInsets.all(12),
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                color: AppColors.primaryContainer,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                children: [
+                  const CircleAvatar(
+                    radius: 20,
+                    backgroundColor: AppColors.primary,
+                    child: Icon(Icons.medical_services_outlined, color: Colors.white, size: 20),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Text(
+                              'DOCTOR ACCOUNT  ·  ',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 0.5,
+                                color: AppColors.primary.withValues(alpha: 0.8),
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                              decoration: BoxDecoration(
+                                color: Colors.green.shade700,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: const Text('🟢 ON DUTY', style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: Colors.white)),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          docName,
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.primaryDark),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(
+                          '$docSpecialty  ·  $docFacility',
+                          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
             Text(DateFormatters.formatDate(DateTime.now()),
                 style: Theme.of(context).textTheme.bodySmall),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
 
             // Live Metrics Cards
             Row(

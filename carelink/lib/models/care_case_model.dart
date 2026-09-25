@@ -88,6 +88,7 @@ class CareCaseModel {
   final String? destinationFacilityId;
   final String? destinationFacilityName;
   final bool isFacilityCareReady;
+  final bool isRouteConfirmed;
   final String? facilityReadinessNotes;
   final String? recommendedRouteReason;
 
@@ -141,6 +142,7 @@ class CareCaseModel {
     this.destinationFacilityId,
     this.destinationFacilityName,
     this.isFacilityCareReady = false,
+    this.isRouteConfirmed = false,
     this.facilityReadinessNotes,
     this.recommendedRouteReason,
     this.minimumTripPlanTitle,
@@ -197,6 +199,7 @@ class CareCaseModel {
       destinationFacilityId: data['destinationFacilityId'] as String?,
       destinationFacilityName: data['destinationFacilityName'] as String?,
       isFacilityCareReady: data['isFacilityCareReady'] as bool? ?? false,
+      isRouteConfirmed: data['isRouteConfirmed'] as bool? ?? data['routeConfirmed'] as bool? ?? (data['status'] == 'routed'),
       facilityReadinessNotes: data['facilityReadinessNotes'] as String?,
       recommendedRouteReason: data['recommendedRouteReason'] as String?,
       minimumTripPlanTitle: data['minimumTripPlanTitle'] as String?,
@@ -250,6 +253,7 @@ class CareCaseModel {
         'destinationFacilityId': destinationFacilityId,
         'destinationFacilityName': destinationFacilityName,
         'isFacilityCareReady': isFacilityCareReady,
+        'isRouteConfirmed': isRouteConfirmed,
         'facilityReadinessNotes': facilityReadinessNotes,
         'recommendedRouteReason': recommendedRouteReason,
         'minimumTripPlanTitle': minimumTripPlanTitle,
@@ -283,6 +287,7 @@ class CareCaseModel {
     String? destinationFacilityId,
     String? destinationFacilityName,
     bool? isFacilityCareReady,
+    bool? isRouteConfirmed,
     String? facilityReadinessNotes,
     String? recommendedRouteReason,
     String? minimumTripPlanTitle,
@@ -328,6 +333,7 @@ class CareCaseModel {
         destinationFacilityName:
             destinationFacilityName ?? this.destinationFacilityName,
         isFacilityCareReady: isFacilityCareReady ?? this.isFacilityCareReady,
+        isRouteConfirmed: isRouteConfirmed ?? this.isRouteConfirmed,
         facilityReadinessNotes:
             facilityReadinessNotes ?? this.facilityReadinessNotes,
         recommendedRouteReason:

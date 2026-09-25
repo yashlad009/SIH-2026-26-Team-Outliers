@@ -93,7 +93,10 @@ class _ConsultDetailScreenState extends ConsumerState<ConsultDetailScreen> {
 
     return AppScaffold(
       appBar: AppBar(
-        title: Text('Consult — ${widget.consult.patientName}'),
+        title: Text(
+          'Consult — ${widget.consult.patientName}',
+          overflow: TextOverflow.ellipsis,
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.history),
@@ -247,23 +250,27 @@ class _HeaderBanner extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryContainer,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    'Status: ${consult.status.label}',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.primaryDark,
+                Flexible(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryContainer,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      'Status: ${consult.status.label}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primaryDark,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ),
-                const Spacer(),
+                const SizedBox(width: 8),
                 if (consult.triageRisk != null)
                   RiskBadge(riskLevel: consult.triageRisk!),
               ],
@@ -277,6 +284,7 @@ class _HeaderBanner extends StatelessWidget {
             Text(
               'Requested by CHW: ${consult.chwName}  ·  ${DateFormatters.timeAgo(consult.createdAt)}',
               style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
@@ -318,18 +326,23 @@ class _PatientSummaryCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(patient.name,
-                          style: const TextStyle(
-                              fontWeight: FontWeight.w700, fontSize: 16)),
+                      Text(
+                        patient.name,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w700, fontSize: 16),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                       Text(
                         '${patient.age}y · ${patient.gender.label} · ${patient.village}, ${patient.district}',
                         style: const TextStyle(
                             fontSize: 13, color: AppColors.textSecondary),
+                        overflow: TextOverflow.ellipsis,
                       ),
                       Text(
                         'Blood Group: ${patient.bloodGroup ?? 'Unknown'}',
                         style: const TextStyle(
                             fontSize: 12, color: AppColors.textSecondary),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
@@ -356,12 +369,16 @@ class _TriageDetailsCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  'Latest Triage & Vitals',
-                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                const Expanded(
+                  child: Text(
+                    'Latest Triage & Vitals',
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
-                const Spacer(),
+                const SizedBox(width: 8),
                 RiskBadge(
                   riskLevel: triage.riskLevel,
                   showScore: true,
@@ -500,3 +517,4 @@ class _NoTriageCard extends StatelessWidget {
     );
   }
 }
+

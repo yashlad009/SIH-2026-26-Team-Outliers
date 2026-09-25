@@ -1,18 +1,25 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/constants/firestore_paths.dart';
+import '../../core/services/care_readiness_service.dart';
 import '../../core/utils/date_formatters.dart';
 import '../../core/widgets/app_scaffold.dart';
 import '../../core/widgets/risk_badge.dart';
 import '../../data/repositories/care_case_repository.dart';
+import '../../data/repositories/consult_repository.dart';
 import '../../data/repositories/facility_repository.dart';
 import '../../data/repositories/follow_up_repository.dart';
+import '../../data/repositories/patient_repository.dart';
 import '../../models/care_case_model.dart';
+import '../../models/consult_request_model.dart';
 import '../../models/facility_model.dart';
 import '../../models/triage_result_model.dart';
 import '../../models/user_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/care_orchestration_provider.dart';
+import '../doctor/consult_chat_screen.dart';
 
 class CareCaseDetailScreen extends ConsumerStatefulWidget {
   final CareCaseModel careCase;
@@ -36,14 +43,22 @@ class _CareCaseDetailScreenState extends ConsumerState<CareCaseDetailScreen> {
     setState(() => _updating = true);
     try {
       final updated = _case.copyWith(
+        isRouteConfirmed: true,
         status: CareCaseStatus.routed,
         updatedAt: DateTime.now(),
       );
       await CareCaseRepository().saveOrUpdateCareCase(updated);
+      await PatientRepository().addTimelineEvent(_case.patientId, {
+        'title': 'Facility Route Confirmed',
+        'description': 'Route to ${_case.destinationFacilityName ?? "Facility"} explicitly confirmed and locked by CHW.',
+        'timestamp': Timestamp.now(),
+        'type': 'routing',
+      });
+      ref.invalidate(careCaseByIdProvider(_case.id));
       setState(() => _case = updated);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Care route confirmed successfully!'),
+          content: Text('Care route confirmed & locked successfully!'),
           backgroundColor: AppColors.riskLow,
         ));
       }
@@ -62,7 +77,8 @@ class _CareCaseDetailScreenState extends ConsumerState<CareCaseDetailScreen> {
   Future<void> _toggleDiagnosticStatus(CareCaseModel c, String testName) async {
     final currentMap = Map<String, String>.from(c.diagnosticsStatus);
     final currentStatus = currentMap[testName] ?? 'pending';
-    currentMap[testName] = currentStatus == 'completed' ? 'pending' : 'completed';
+    final newStatus = currentStatus == 'completed' ? 'pending' : 'completed';
+    currentMap[testName] = newStatus;
 
     final updated = c.copyWith(
       diagnosticsStatus: currentMap,
@@ -70,13 +86,21 @@ class _CareCaseDetailScreenState extends ConsumerState<CareCaseDetailScreen> {
     );
 
     await CareCaseRepository().saveOrUpdateCareCase(updated);
+    await PatientRepository().addTimelineEvent(c.patientId, {
+      'title': newStatus == 'completed' ? 'Diagnostic Test Completed' : 'Diagnostic Status Reset',
+      'description': 'Diagnostic test "$testName" marked as ${newStatus.toUpperCase()} by CHW.',
+      'timestamp': Timestamp.now(),
+      'type': 'diagnostic',
+    });
+    ref.invalidate(careCaseByIdProvider(c.id));
     setState(() => _case = updated);
   }
 
   Future<void> _toggleMedicineStatus(CareCaseModel c, String medicineName) async {
     final currentMap = Map<String, String>.from(c.medicinesStatus);
     final currentStatus = currentMap[medicineName] ?? 'pending';
-    currentMap[medicineName] = currentStatus == 'dispensed' ? 'pending' : 'dispensed';
+    final newStatus = currentStatus == 'dispensed' ? 'pending' : 'dispensed';
+    currentMap[medicineName] = newStatus;
 
     final updated = c.copyWith(
       medicinesStatus: currentMap,
@@ -84,6 +108,13 @@ class _CareCaseDetailScreenState extends ConsumerState<CareCaseDetailScreen> {
     );
 
     await CareCaseRepository().saveOrUpdateCareCase(updated);
+    await PatientRepository().addTimelineEvent(c.patientId, {
+      'title': newStatus == 'dispensed' ? 'Medicine Dispensed' : 'Medicine Status Reset',
+      'description': 'Medicine "$medicineName" marked as ${newStatus.toUpperCase()} by CHW.',
+      'timestamp': Timestamp.now(),
+      'type': 'medicine',
+    });
+    ref.invalidate(careCaseByIdProvider(c.id));
     setState(() => _case = updated);
   }
 
@@ -142,8 +173,8 @@ class _CareCaseDetailScreenState extends ConsumerState<CareCaseDetailScreen> {
       missing.add('Doctor Consultation (Pending doctor review & decision)');
     }
 
-    if (c.status == CareCaseStatus.triaged || c.status == CareCaseStatus.doctorAssigned) {
-      missing.add('Facility Route Confirmation');
+    if (!c.isRouteConfirmed) {
+      missing.add('Facility Route Confirmation (Pending CHW route confirmation)');
     }
 
     for (final entry in c.diagnosticsStatus.entries) {
@@ -176,10 +207,18 @@ class _CareCaseDetailScreenState extends ConsumerState<CareCaseDetailScreen> {
       );
       await CareCaseRepository().saveOrUpdateCareCase(updated);
 
-      if (c.followUpTaskId != null) {
+      if (c.followUpTaskId != null && c.followUpTaskId!.isNotEmpty) {
         await FollowUpRepository().markDone(c.followUpTaskId!);
       }
 
+      await PatientRepository().addTimelineEvent(c.patientId, {
+        'title': 'Care Journey Completed',
+        'description': 'All required care steps, diagnostics, medicines, and follow-up completed.',
+        'timestamp': Timestamp.now(),
+        'type': 'completion',
+      });
+
+      ref.invalidate(careCaseByIdProvider(c.id));
       setState(() => _case = updated);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
@@ -219,6 +258,25 @@ class _CareCaseDetailScreenState extends ConsumerState<CareCaseDetailScreen> {
               updatedAt: DateTime.now(),
             );
             await CareCaseRepository().saveOrUpdateCareCase(updated);
+
+            if (c.consultRequestId != null && c.consultRequestId!.isNotEmpty) {
+              await FirebaseFirestore.instance
+                  .collection(FirestorePaths.consultRequests)
+                  .doc(c.consultRequestId)
+                  .update({
+                'doctorUid': doc.uid,
+                'doctorName': doc.displayName,
+              });
+            }
+
+            await PatientRepository().addTimelineEvent(c.patientId, {
+              'title': 'Doctor Reassigned',
+              'description': 'Assigned doctor updated to ${doc.displayName}.',
+              'timestamp': Timestamp.now(),
+              'type': 'assignment',
+            });
+
+            ref.invalidate(careCaseByIdProvider(c.id));
             setState(() => _case = updated);
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -244,19 +302,30 @@ class _CareCaseDetailScreenState extends ConsumerState<CareCaseDetailScreen> {
           careCase: c,
           onFacilitySelected: (fac, isReady, reason) async {
             Navigator.pop(context);
+            final oldFac = c.destinationFacilityName ?? 'Local Facility';
             final updated = c.copyWith(
               destinationFacilityId: fac.id,
               destinationFacilityName: fac.name,
               isFacilityCareReady: isReady,
               facilityReadinessNotes: reason,
               recommendedRouteReason: 'Manually selected facility: ${fac.name}. $reason',
+              isRouteConfirmed: false, // Reset route confirmation so new route MUST be explicitly confirmed!
               updatedAt: DateTime.now(),
             );
             await CareCaseRepository().saveOrUpdateCareCase(updated);
+
+            await PatientRepository().addTimelineEvent(c.patientId, {
+              'title': 'Facility Route Changed',
+              'description': 'Facility route changed from $oldFac to ${fac.name} by CHW.',
+              'timestamp': Timestamp.now(),
+              'type': 'routing',
+            });
+
+            ref.invalidate(careCaseByIdProvider(c.id));
             setState(() => _case = updated);
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                content: Text('Facility set to ${fac.name}'),
+                content: Text('Facility set to ${fac.name}. Confirm route to lock.'),
                 backgroundColor: AppColors.primary,
               ));
             }
@@ -269,7 +338,10 @@ class _CareCaseDetailScreenState extends ConsumerState<CareCaseDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final liveCaseAsync = ref.watch(careCaseByIdProvider(_case.id));
-    final liveCase = liveCaseAsync.valueOrNull ?? _case;
+    final fetchedCase = liveCaseAsync.valueOrNull;
+    final liveCase = (fetchedCase != null && fetchedCase.updatedAt.isAfter(_case.updatedAt))
+        ? fetchedCase
+        : _case;
 
     return AppScaffold(
       appBar: AppBar(
@@ -441,10 +513,12 @@ class _CareCaseDetailScreenState extends ConsumerState<CareCaseDetailScreen> {
                     Text(
                       c.patientName,
                       style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primaryDark),
+                      overflow: TextOverflow.ellipsis,
                     ),
                     Text(
                       '${c.patientAge}y · ${c.patientGender} · Village: ${c.village}',
                       style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
@@ -485,16 +559,26 @@ class _CareCaseDetailScreenState extends ConsumerState<CareCaseDetailScreen> {
 
   Widget _buildJourneyStepper(CareCaseModel c) {
     final steps = [
-      {'title': 'Triage', 'status': CareCaseStatus.triaged},
-      {'title': 'Doctor Assigned', 'status': CareCaseStatus.doctorAssigned},
-      {'title': 'Care Ready', 'status': CareCaseStatus.carePlanned},
-      {'title': 'Route Confirmed', 'status': CareCaseStatus.routed},
-      {'title': 'In Progress', 'status': CareCaseStatus.inProgress},
-      {'title': 'Completed', 'status': CareCaseStatus.completed},
+      {'title': 'Triage'},
+      {'title': 'Doctor Assigned'},
+      {'title': 'Doctor Consulted'},
+      {'title': 'Care Ready'},
+      {'title': 'Route Confirmed'},
+      {'title': 'Completed'},
     ];
 
-    int currentStepIndex = steps.indexWhere((s) => s['status'] == c.status);
-    if (currentStepIndex < 0) currentStepIndex = 1;
+    int currentStepIndex = 0;
+    if (c.status == CareCaseStatus.completed) {
+      currentStepIndex = 5;
+    } else if (c.isRouteConfirmed) {
+      currentStepIndex = 4;
+    } else if (c.isFacilityCareReady && c.isDoctorConsulted) {
+      currentStepIndex = 3;
+    } else if (c.isDoctorConsulted) {
+      currentStepIndex = 2;
+    } else if (c.assignedDoctorUid != null && c.assignedDoctorUid!.isNotEmpty) {
+      currentStepIndex = 1;
+    }
 
     return Card(
       child: Padding(
@@ -516,7 +600,7 @@ class _CareCaseDetailScreenState extends ConsumerState<CareCaseDetailScreen> {
                   final isCurrent = idx == currentStepIndex;
 
                   return SizedBox(
-                    width: 72,
+                    width: 78,
                     child: Column(
                       children: [
                         Container(
@@ -572,7 +656,7 @@ class _CareCaseDetailScreenState extends ConsumerState<CareCaseDetailScreen> {
                     children: [
                       Icon(Icons.psychology_outlined, color: AppColors.primary),
                       SizedBox(width: 8),
-                      Flexible(
+                      Expanded(
                         child: Text(
                           '1. SMART DOCTOR ASSIGNMENT',
                           style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.primary),
@@ -609,10 +693,12 @@ class _CareCaseDetailScreenState extends ConsumerState<CareCaseDetailScreen> {
                       Text(
                         c.assignedDoctorName ?? 'Dr. Rajesh Patil',
                         style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                        overflow: TextOverflow.ellipsis,
                       ),
                       Text(
                         'Specialty: ${c.assignedDoctorSpecialty ?? c.requiredSpecialty ?? "General Medicine"}',
                         style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
@@ -642,31 +728,112 @@ class _CareCaseDetailScreenState extends ConsumerState<CareCaseDetailScreen> {
                 ],
               ),
             ),
-            if (c.isDoctorConsulted && c.doctorClinicalNote != null) ...[
-              const SizedBox(height: 10),
+
+            // Doctor Consulted Banner (P0 Fix 2)
+            if (c.isDoctorConsulted) ...[
+              const SizedBox(height: 12),
               Container(
-                padding: const EdgeInsets.all(10),
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: Colors.green.shade50,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.green.shade200),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.green.shade300, width: 1.5),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Row(
+                    Row(
                       children: [
-                        Icon(Icons.check_circle_outline, size: 14, color: Colors.green),
-                        SizedBox(width: 6),
-                        Text('Doctor Decision & Clinical Note:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.green)),
+                        const Icon(Icons.check_circle, color: Colors.green, size: 20),
+                        const SizedBox(width: 8),
+                        const Expanded(
+                          child: Text(
+                            'DOCTOR CONSULTED',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w900,
+                              fontSize: 13,
+                              color: Colors.green,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.green,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Text(
+                            'ACCEPTED',
+                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
+                          ),
+                        ),
                       ],
                     ),
-                    const SizedBox(height: 4),
-                    Text(c.doctorClinicalNote!, style: const TextStyle(fontSize: 12, color: AppColors.textPrimary)),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Dr. ${c.assignedDoctorName ?? "Assigned Doctor"} has accepted this consultation.',
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                    ),
+                    if (c.doctorClinicalNote != null && c.doctorClinicalNote!.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        'Clinical Note: ${c.doctorClinicalNote}',
+                        style: const TextStyle(fontSize: 12, fontStyle: FontStyle.italic, color: AppColors.textSecondary),
+                      ),
+                    ],
                   ],
                 ),
               ),
             ],
+
+            // Action Button — Open Chat with Doctor (P0 Fix 3)
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () async {
+                  final consultId = c.consultRequestId;
+                  ConsultRequestModel? consult;
+                  if (consultId != null && consultId.isNotEmpty) {
+                    consult = await ConsultRepository().getConsult(consultId);
+                  }
+                  consult ??= ConsultRequestModel(
+                    id: c.consultRequestId ?? 'consult_${c.id}',
+                    patientId: c.patientId,
+                    patientName: c.patientName,
+                    chwUid: 'chw_uid',
+                    chwName: 'Sunita Kamble (CHW)',
+                    doctorUid: c.assignedDoctorUid,
+                    doctorName: c.assignedDoctorName,
+                    reason: c.chiefComplaint,
+                    urgency: c.isEmergency
+                        ? UrgencyLevel.emergency
+                        : (c.riskLevel == RiskLevel.high ? UrgencyLevel.urgent : UrgencyLevel.routine),
+                    status: c.isDoctorConsulted ? ConsultStatus.accepted : ConsultStatus.pending,
+                    careCaseId: c.id,
+                    createdAt: c.createdAt,
+                  );
+                  if (context.mounted) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => ConsultChatScreen(consult: consult!)),
+                    );
+                  }
+                },
+                icon: const Icon(Icons.chat_outlined, size: 16),
+                label: Text(
+                  c.isDoctorConsulted
+                      ? 'OPEN CHAT WITH DR. ${(c.assignedDoctorName ?? "DOCTOR").toUpperCase()}'
+                      : 'OPEN CHAT WITH DOCTOR',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
+                ),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.primary,
+                  side: const BorderSide(color: AppColors.primary),
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -690,7 +857,7 @@ class _CareCaseDetailScreenState extends ConsumerState<CareCaseDetailScreen> {
                     children: [
                       Icon(Icons.fact_check_outlined, color: AppColors.primary),
                       SizedBox(width: 8),
-                      Flexible(
+                      Expanded(
                         child: Text(
                           '2. CARE READINESS AUDIT',
                           style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.primary),
@@ -760,7 +927,7 @@ class _CareCaseDetailScreenState extends ConsumerState<CareCaseDetailScreen> {
   }
 
   Widget _buildAdaptiveRoutingCard(CareCaseModel c) {
-    final isRouted = c.status == CareCaseStatus.routed || c.status == CareCaseStatus.inProgress || c.status == CareCaseStatus.completed;
+    final isRouted = c.isRouteConfirmed;
 
     return Card(
       child: Padding(
@@ -771,15 +938,20 @@ class _CareCaseDetailScreenState extends ConsumerState<CareCaseDetailScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Row(
-                  children: [
-                    Icon(Icons.alt_route, color: AppColors.primary),
-                    SizedBox(width: 8),
-                    Text(
-                      '3. ADAPTIVE CARE ROUTING',
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.primary),
-                    ),
-                  ],
+                const Expanded(
+                  child: Row(
+                    children: [
+                      Icon(Icons.alt_route, color: AppColors.primary),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          '3. ADAPTIVE CARE ROUTING',
+                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.primary),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 TextButton.icon(
                   onPressed: () => _showViewAlternativesModal(c),
@@ -803,15 +975,40 @@ class _CareCaseDetailScreenState extends ConsumerState<CareCaseDetailScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('RECOMMENDED FACILITY PATHWAY', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.textSecondary)),
-                  const SizedBox(height: 4),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          'RECOMMENDED FACILITY PATHWAY',
+                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.textSecondary),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: isRouted ? Colors.green.shade100 : Colors.amber.shade100,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          isRouted ? 'LOCKED & CONFIRMED' : 'NOT CONFIRMED',
+                          style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: isRouted ? Colors.green.shade900 : Colors.amber.shade900),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
                   Row(
                     children: [
                       const Icon(Icons.location_on, color: AppColors.primary, size: 18),
                       const SizedBox(width: 6),
-                      Text(
-                        c.destinationFacilityName ?? 'Nashik Civil Hospital',
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.primaryDark),
+                      Expanded(
+                        child: Text(
+                          c.destinationFacilityName ?? 'Nashik Civil Hospital',
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.primaryDark),
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                     ],
                   ),
@@ -838,7 +1035,7 @@ class _CareCaseDetailScreenState extends ConsumerState<CareCaseDetailScreen> {
                 children: [
                   Icon(Icons.verified, color: AppColors.riskLow, size: 16),
                   SizedBox(width: 6),
-                  Text('Route Confirmed & Locked', style: TextStyle(color: AppColors.riskLow, fontWeight: FontWeight.bold, fontSize: 12)),
+                  Text('✓ Route Confirmed & Locked', style: TextStyle(color: AppColors.riskLow, fontWeight: FontWeight.bold, fontSize: 12)),
                 ],
               ),
           ],
@@ -886,77 +1083,89 @@ class _CareCaseDetailScreenState extends ConsumerState<CareCaseDetailScreen> {
             // Diagnostic Action Items
             const Text('DIAGNOSTICS TRACKING', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.textSecondary, letterSpacing: 0.5)),
             const SizedBox(height: 6),
-            ...c.diagnosticsSummary.map((d) {
-              final status = c.diagnosticsStatus[d] ?? 'pending';
-              final isDone = status == 'completed';
-              return InkWell(
-                onTap: () => _toggleDiagnosticStatus(c, d),
-                child: Padding(
-                  padding: const EdgeInsets.only(bottom: 6),
-                  child: Row(
-                    children: [
-                      Icon(isDone ? Icons.check_circle : Icons.radio_button_unchecked, size: 16, color: isDone ? Colors.green : AppColors.primary),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          d,
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, decoration: isDone ? TextDecoration.lineThrough : null),
+            if (c.diagnosticsSummary.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 4),
+                child: Text('No diagnostic tests required for this care episode.', style: TextStyle(fontSize: 12, color: AppColors.textSecondary, fontStyle: FontStyle.italic)),
+              )
+            else
+              ...c.diagnosticsSummary.map((d) {
+                final status = c.diagnosticsStatus[d] ?? 'pending';
+                final isDone = status == 'completed';
+                return InkWell(
+                  onTap: () => _toggleDiagnosticStatus(c, d),
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Row(
+                      children: [
+                        Icon(isDone ? Icons.check_circle : Icons.radio_button_unchecked, size: 16, color: isDone ? Colors.green : AppColors.primary),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            d,
+                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, decoration: isDone ? TextDecoration.lineThrough : null),
+                          ),
                         ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: isDone ? Colors.green.shade100 : Colors.amber.shade100,
-                          borderRadius: BorderRadius.circular(6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: isDone ? Colors.green.shade100 : Colors.amber.shade100,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            isDone ? 'COMPLETED' : 'PENDING',
+                            style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: isDone ? Colors.green.shade900 : Colors.amber.shade900),
+                          ),
                         ),
-                        child: Text(
-                          isDone ? 'COMPLETED' : 'PENDING',
-                          style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: isDone ? Colors.green.shade900 : Colors.amber.shade900),
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-              );
-            }),
+                );
+              }),
 
             const SizedBox(height: 12),
             // Pharmacy Action Items
             const Text('PHARMACY DISPENSING TRACKING', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.textSecondary, letterSpacing: 0.5)),
             const SizedBox(height: 6),
-            ...c.medicinesSummary.map((m) {
-              final status = c.medicinesStatus[m] ?? 'pending';
-              final isDone = status == 'dispensed';
-              return InkWell(
-                onTap: () => _toggleMedicineStatus(c, m),
-                child: Padding(
-                  padding: const EdgeInsets.only(bottom: 6),
-                  child: Row(
-                    children: [
-                      Icon(isDone ? Icons.check_circle : Icons.radio_button_unchecked, size: 16, color: isDone ? Colors.green : AppColors.primary),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          m,
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, decoration: isDone ? TextDecoration.lineThrough : null),
+            if (c.medicinesSummary.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 4),
+                child: Text('No pharmacy items required for this care episode.', style: TextStyle(fontSize: 12, color: AppColors.textSecondary, fontStyle: FontStyle.italic)),
+              )
+            else
+              ...c.medicinesSummary.map((m) {
+                final status = c.medicinesStatus[m] ?? 'pending';
+                final isDone = status == 'dispensed';
+                return InkWell(
+                  onTap: () => _toggleMedicineStatus(c, m),
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Row(
+                      children: [
+                        Icon(isDone ? Icons.check_circle : Icons.radio_button_unchecked, size: 16, color: isDone ? Colors.green : AppColors.primary),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            m,
+                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, decoration: isDone ? TextDecoration.lineThrough : null),
+                          ),
                         ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: isDone ? Colors.green.shade100 : Colors.amber.shade100,
-                          borderRadius: BorderRadius.circular(6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: isDone ? Colors.green.shade100 : Colors.amber.shade100,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            isDone ? 'DISPENSED' : 'PENDING',
+                            style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: isDone ? Colors.green.shade900 : Colors.amber.shade900),
+                          ),
                         ),
-                        child: Text(
-                          isDone ? 'DISPENSED' : 'PENDING',
-                          style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: isDone ? Colors.green.shade900 : Colors.amber.shade900),
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-              );
-            }),
+                );
+              }),
           ],
         ),
       ),
@@ -1032,6 +1241,8 @@ class _DoctorSelectionSheet extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final doctorsAsync = ref.watch(allDoctorsProvider);
+
     return Container(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -1040,61 +1251,32 @@ class _DoctorSelectionSheet extends ConsumerWidget {
         children: [
           const Text('FIND ANOTHER DOCTOR', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
           const SizedBox(height: 4),
-          Text('Select an eligible on-duty doctor for ${careCase.patientName}:', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+          Text('Select an eligible doctor for ${careCase.patientName}:', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
           const SizedBox(height: 16),
-          _docTile(
-            name: 'Dr. Rajesh Patil',
-            specialty: 'Cardiology',
-            isOnDuty: true,
-            workload: 2,
-            facility: 'Nashik PHC Ward 3',
-            onTap: () => onDoctorSelected(UserModel(
-              uid: 'doctor_uid',
-              email: 'doctor@carelink.demo',
-              displayName: 'Dr. Rajesh Patil',
-              role: UserRole.doctor,
-              facilityName: 'Nashik PHC Ward 3',
-              specialty: 'Cardiology',
-              isOnDuty: true,
-              activeWorkload: 2,
-              createdAt: DateTime.now(),
-            )),
-          ),
-          _docTile(
-            name: 'Dr. Anita Sharma',
-            specialty: 'Obstetrics & Gynecology',
-            isOnDuty: true,
-            workload: 1,
-            facility: 'Nashik Civil Hospital',
-            onTap: () => onDoctorSelected(UserModel(
-              uid: 'doctor_anita',
-              email: 'anita@carelink.demo',
-              displayName: 'Dr. Anita Sharma',
-              role: UserRole.doctor,
-              facilityName: 'Nashik Civil Hospital',
-              specialty: 'Obstetrics & Gynecology',
-              isOnDuty: true,
-              activeWorkload: 1,
-              createdAt: DateTime.now(),
-            )),
-          ),
-          _docTile(
-            name: 'Dr. Vikram Deshmukh',
-            specialty: 'Pulmonology',
-            isOnDuty: true,
-            workload: 0,
-            facility: 'SDH Igatpuri',
-            onTap: () => onDoctorSelected(UserModel(
-              uid: 'doctor_vikram',
-              email: 'vikram@carelink.demo',
-              displayName: 'Dr. Vikram Deshmukh',
-              role: UserRole.doctor,
-              facilityName: 'SDH Igatpuri',
-              specialty: 'Pulmonology',
-              isOnDuty: true,
-              activeWorkload: 0,
-              createdAt: DateTime.now(),
-            )),
+          doctorsAsync.when(
+            data: (doctors) {
+              if (doctors.isEmpty) {
+                return const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 16),
+                  child: Text('No doctors registered in network.'),
+                );
+              }
+              return Column(
+                children: doctors.map((doc) => _docTile(
+                  name: doc.displayName,
+                  specialty: doc.specialty ?? 'General Medicine',
+                  isOnDuty: doc.isOnDuty,
+                  workload: doc.activeWorkload,
+                  facility: doc.facilityName ?? 'District Office',
+                  onTap: () => onDoctorSelected(doc),
+                )).toList(),
+              );
+            },
+            loading: () => const Padding(
+              padding: EdgeInsets.all(16),
+              child: Center(child: CircularProgressIndicator()),
+            ),
+            error: (e, _) => Text('Error loading doctors: $e'),
           ),
         ],
       ),
@@ -1140,6 +1322,8 @@ class _FacilitySelectionSheet extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final facilitiesAsync = ref.watch(allFacilitiesProvider);
+
     return Container(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -1150,38 +1334,43 @@ class _FacilitySelectionSheet extends ConsumerWidget {
           const SizedBox(height: 4),
           const Text('Compare facility readiness & capabilities for required care:', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
           const SizedBox(height: 16),
-          _facTile(
-            name: 'Nashik PHC Ward 3',
-            tier: 'Primary Health Center',
-            isReady: false,
-            reason: 'PARTIAL READINESS: ECG machine unavailable, Amlodipine stock low.',
-            onTap: () => onFacilitySelected(
-              FacilityModel(id: 'phc_ward_3', name: 'Nashik PHC Ward 3', tier: 'PHC', isOperational: true, availableSpecialties: ['General Medicine'], availableDiagnostics: ['CBC'], availableMedicines: ['Paracetamol 500mg']),
-              false,
-              'PARTIAL READINESS: ECG machine unavailable.',
+          facilitiesAsync.when(
+            data: (facilities) {
+              if (facilities.isEmpty) {
+                return const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 16),
+                  child: Text('No alternative facilities configured.'),
+                );
+              }
+              return Column(
+                children: facilities.map((fac) {
+                  final audit = CareReadinessService.auditFacilityReadiness(
+                    facility: fac,
+                    requiredSpecialty: careCase.requiredSpecialty ?? 'General Medicine',
+                    requiredDiagnostics: careCase.diagnosticsSummary,
+                    requiredMedicines: careCase.medicinesSummary,
+                  );
+                  final reason = audit.isCareReady
+                      ? 'CARE READY: Full specialty, diagnostics & pharmacy availability.'
+                      : (audit.missingReasons.isNotEmpty
+                          ? 'PARTIAL: ${audit.missingReasons.join("; ")}'
+                          : 'PARTIAL READINESS');
+
+                  return _facTile(
+                    name: fac.name,
+                    tier: '${fac.tier} Level Facility',
+                    isReady: audit.isCareReady,
+                    reason: reason,
+                    onTap: () => onFacilitySelected(fac, audit.isCareReady, reason),
+                  );
+                }).toList(),
+              );
+            },
+            loading: () => const Padding(
+              padding: EdgeInsets.all(16),
+              child: Center(child: CircularProgressIndicator()),
             ),
-          ),
-          _facTile(
-            name: 'SDH Igatpuri',
-            tier: 'Sub-District Hospital',
-            isReady: false,
-            reason: 'PARTIAL READINESS: Pulmonology coverage only.',
-            onTap: () => onFacilitySelected(
-              FacilityModel(id: 'sdh_igatpuri', name: 'SDH Igatpuri', tier: 'SDH', isOperational: true, availableSpecialties: ['Pulmonology'], availableDiagnostics: ['CBC', 'X-Ray'], availableMedicines: ['Salbutamol Inhaler']),
-              false,
-              'PARTIAL READINESS: Pulmonology coverage.',
-            ),
-          ),
-          _facTile(
-            name: 'Nashik Civil Hospital',
-            tier: 'District Civil Hospital',
-            isReady: true,
-            reason: 'CARE READY: Full Cardiology, ECG, and Pharmacy stock available.',
-            onTap: () => onFacilitySelected(
-              FacilityModel(id: 'civil_nashik', name: 'Nashik Civil Hospital', tier: 'District Hospital', isOperational: true, availableSpecialties: ['Cardiology', 'OBGYN', 'Pulmonology'], availableDiagnostics: ['ECG', 'CBC + Blood Sugar'], availableMedicines: ['Amlodipine 5mg', 'Salbutamol Inhaler']),
-              true,
-              'All required care available at Nashik Civil Hospital.',
-            ),
+            error: (e, _) => Text('Error loading facilities: $e'),
           ),
         ],
       ),
@@ -1215,3 +1404,4 @@ class _FacilitySelectionSheet extends ConsumerWidget {
     );
   }
 }
+
