@@ -41,6 +41,7 @@ class FollowUpTaskModel {
   final DateTime dueDate;
   final bool isDone;
   final DateTime? completedAt;
+  final String? careCaseId;
   final String createdByUid;
   final DateTime createdAt;
 
@@ -55,6 +56,7 @@ class FollowUpTaskModel {
     required this.dueDate,
     this.isDone = false,
     this.completedAt,
+    this.careCaseId,
     required this.createdByUid,
     required this.createdAt,
   });
@@ -74,6 +76,7 @@ class FollowUpTaskModel {
       dueDate: (data['dueDate'] as Timestamp?)?.toDate() ?? DateTime.now(),
       isDone: data['isDone'] as bool? ?? false,
       completedAt: (data['completedAt'] as Timestamp?)?.toDate(),
+      careCaseId: data['careCaseId'] as String?,
       createdByUid: data['createdByUid'] as String? ?? '',
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
@@ -89,6 +92,7 @@ class FollowUpTaskModel {
         'dueDate': Timestamp.fromDate(dueDate),
         'isDone': isDone,
         'completedAt': completedAt != null ? Timestamp.fromDate(completedAt!) : null,
+        'careCaseId': careCaseId,
         'createdByUid': createdByUid,
         'createdAt': Timestamp.fromDate(createdAt),
       };
@@ -96,6 +100,7 @@ class FollowUpTaskModel {
   FollowUpTaskModel copyWith({
     bool? isDone,
     DateTime? completedAt,
+    String? careCaseId,
   }) =>
       FollowUpTaskModel(
         id: id,
@@ -108,6 +113,7 @@ class FollowUpTaskModel {
         dueDate: dueDate,
         isDone: isDone ?? this.isDone,
         completedAt: completedAt ?? this.completedAt,
+        careCaseId: careCaseId ?? this.careCaseId,
         createdByUid: createdByUid,
         createdAt: createdAt,
       );

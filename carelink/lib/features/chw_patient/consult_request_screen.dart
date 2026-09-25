@@ -11,6 +11,11 @@ import '../../models/triage_result_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/triage_provider.dart';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../core/constants/firestore_paths.dart';
+import '../../core/services/smart_assignment_service.dart';
+import '../../models/user_model.dart';
+
 class ConsultRequestScreen extends ConsumerStatefulWidget {
   final PatientModel patient;
   const ConsultRequestScreen({super.key, required this.patient});
@@ -40,15 +45,60 @@ class _ConsultRequestScreenState extends ConsumerState<ConsultRequestScreen> {
       final latestTriage =
           await PatientRepository().getLatestTriage(widget.patient.id);
 
+      final db = FirebaseFirestore.instance;
+
+      // 1. Check if an active Care Case exists for patient
+      final careCasesSnap = await db
+          .collection(FirestorePaths.careCases)
+          .where('patientId', isEqualTo: widget.patient.id)
+          .get();
+
+      String? careCaseId;
+      String? doctorUid;
+      String? doctorName;
+
+      if (careCasesSnap.docs.isNotEmpty) {
+        final careCaseData = careCasesSnap.docs.first.data();
+        careCaseId = careCasesSnap.docs.first.id;
+        doctorUid = careCaseData['assignedDoctorUid'] as String?;
+        doctorName = careCaseData['assignedDoctorName'] as String?;
+      }
+
+      if (doctorUid == null || doctorUid.isEmpty) {
+        // Query available doctors and perform Smart Doctor Assignment
+        final usersSnap = await db.collection(FirestorePaths.users).get();
+        final users = usersSnap.docs.map(UserModel.fromFirestore).toList();
+        final requiredSpecialty = SmartAssignmentService.identifyRequiredSpecialty(
+          chiefComplaint: _reasonCtrl.text.trim(),
+          symptoms: latestTriage?.symptoms ?? [],
+          age: widget.patient.age,
+          temperature: latestTriage?.temperature,
+          bpSystolic: latestTriage?.bpSystolic,
+          bpDiastolic: latestTriage?.bpDiastolic,
+          spO2: latestTriage?.spO2,
+          chronicConditions: widget.patient.chronicConditions,
+        );
+        final assignment = SmartAssignmentService.selectBestDoctor(
+          availableDoctors: users,
+          requiredSpecialty: requiredSpecialty,
+          urgency: _urgency,
+        );
+        doctorUid = assignment.assignedDoctor?.uid ?? 'demo_doctor_vikram';
+        doctorName = assignment.assignedDoctor?.displayName ?? 'Dr. Vikram Deshmukh';
+      }
+
       final consult = ConsultRequestModel(
         id: '',
         patientId: widget.patient.id,
         patientName: widget.patient.name,
-        chwUid: user?.uid ?? '',
-        chwName: user?.displayName ?? 'CHW',
+        chwUid: user?.uid ?? 'chw_uid',
+        chwName: user?.displayName ?? 'Sunita Kamble (CHW)',
+        doctorUid: doctorUid,
+        doctorName: doctorName,
         reason: _reasonCtrl.text.trim(),
         urgency: _urgency,
         status: ConsultStatus.pending,
+        careCaseId: careCaseId,
         triageResultId: latestTriage?.id,
         triageRisk: latestTriage?.riskLevel,
         createdAt: DateTime.now(),

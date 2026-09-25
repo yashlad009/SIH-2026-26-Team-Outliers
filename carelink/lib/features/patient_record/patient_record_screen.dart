@@ -21,6 +21,9 @@ import '../../providers/triage_provider.dart';
 import '../chw_patient/consult_request_screen.dart';
 import '../doctor/consult_chat_screen.dart';
 import '../doctor/raise_referral_screen.dart';
+import '../care_orchestration/care_case_detail_screen.dart';
+import '../../providers/care_orchestration_provider.dart';
+import '../../data/repositories/patient_repository.dart';
 import 'create_follow_up_dialog.dart';
 import 'timeline_tile.dart';
 
@@ -243,7 +246,7 @@ class _TimelineEvent {
   });
 }
 
-class _PatientHeaderCard extends StatelessWidget {
+class _PatientHeaderCard extends ConsumerWidget {
   final PatientModel patient;
   final UserRole? userRole;
 
@@ -253,8 +256,9 @@ class _PatientHeaderCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final isDoctor = userRole == UserRole.doctor;
+    final casesAsync = ref.watch(careCasesByPatientProvider(patient.id));
 
     return Card(
       margin: const EdgeInsets.all(12),
@@ -338,24 +342,69 @@ class _PatientHeaderCard extends StatelessWidget {
               ),
             ],
 
-            const Divider(height: 24),
+            const Divider(height: 20),
+
+            // Care Case Journey Primary Button
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () async {
+                  final existingCases = casesAsync.valueOrNull ?? [];
+                  if (existingCases.isNotEmpty) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => CareCaseDetailScreen(careCase: existingCases.first)),
+                    );
+                  } else {
+                    // Create default Care Case for patient
+                    final triage = await PatientRepository().getLatestTriage(patient.id);
+                    if (triage != null) {
+                      final newCase = await ref.read(careOrchestrationEngineProvider).orchestrateCareCase(
+                            patient: patient,
+                            triage: triage,
+                            chwUid: 'chw_uid',
+                            chwName: 'Sunita Kamble (CHW)',
+                          );
+                      if (context.mounted) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => CareCaseDetailScreen(careCase: newCase)),
+                        );
+                      }
+                    } else {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Please perform Digital Triage first to create a Care Case.')),
+                        );
+                      }
+                    }
+                  }
+                },
+                icon: const Icon(Icons.hub_outlined, size: 18),
+                label: const Text('Open Care Case Journey (Smart Engine)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
 
             // Patient Quick Actions Bar
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  OutlinedButton.icon(
                     onPressed: () => CreateFollowUpDialog.show(context, patient),
                     icon: const Icon(Icons.event_note_outlined, size: 16),
                     label: const Text('+ Follow-up', style: TextStyle(fontSize: 12)),
                     style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: OutlinedButton.icon(
+                  const SizedBox(width: 8),
+                  OutlinedButton.icon(
                     onPressed: () => Navigator.push(
                       context,
                       MaterialPageRoute(builder: (_) => RaiseReferralScreen(patient: patient)),
@@ -363,27 +412,25 @@ class _PatientHeaderCard extends StatelessWidget {
                     icon: const Icon(Icons.local_hospital_outlined, size: 16),
                     label: const Text('Referral', style: TextStyle(fontSize: 12)),
                     style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     ),
                   ),
-                ),
-                if (!isDoctor) ...[
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: ElevatedButton.icon(
+                  if (!isDoctor) ...[
+                    const SizedBox(width: 8),
+                    OutlinedButton.icon(
                       onPressed: () => Navigator.push(
                         context,
                         MaterialPageRoute(builder: (_) => ConsultRequestScreen(patient: patient)),
                       ),
                       icon: const Icon(Icons.video_call_outlined, size: 16),
                       label: const Text('Consult', style: TextStyle(fontSize: 12)),
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                       ),
                     ),
-                  ),
+                  ],
                 ],
-              ],
+              ),
             ),
           ],
         ),

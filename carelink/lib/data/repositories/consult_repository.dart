@@ -29,6 +29,27 @@ class ConsultRepository {
     });
   }
 
+  Stream<List<ConsultRequestModel>> watchPendingConsultsForDoctor(String doctorUid) {
+    return _col
+        .where('status', isEqualTo: 'pending')
+        .snapshots(includeMetadataChanges: true)
+        .map((s) {
+      final list = s.docs
+          .map(ConsultRequestModel.fromFirestore)
+          .where((c) => c.doctorUid == doctorUid)
+          .toList();
+      list.sort((a, b) {
+        final priorityA = _riskPriority(a.triageRisk);
+        final priorityB = _riskPriority(b.triageRisk);
+        if (priorityA != priorityB) {
+          return priorityB.compareTo(priorityA);
+        }
+        return b.createdAt.compareTo(a.createdAt);
+      });
+      return list;
+    });
+  }
+
   int _riskPriority(RiskLevel? risk) {
     if (risk == null) return 0;
     switch (risk) {
@@ -96,6 +117,25 @@ class ConsultRepository {
       'doctorName': doctorName,
       'acceptedAt': Timestamp.now(),
     });
+
+    final consult = await getConsult(consultId);
+    if (consult != null && consult.careCaseId != null && consult.careCaseId!.isNotEmpty) {
+      await _db.collection(FirestorePaths.careCases).doc(consult.careCaseId).update({
+        'isDoctorConsulted': true,
+        'assignedDoctorUid': doctorUid,
+        'assignedDoctorName': doctorName,
+        'updatedAt': Timestamp.now(),
+      });
+
+      if (consult.patientId.isNotEmpty) {
+        await _db.collection(FirestorePaths.patientTimeline(consult.patientId)).add({
+          'title': 'Consultation Accepted',
+          'description': '$doctorName accepted tele-consultation request.',
+          'timestamp': Timestamp.now(),
+          'type': 'consultation',
+        });
+      }
+    }
   }
 
   Future<void> closeConsult({
@@ -107,6 +147,18 @@ class ConsultRepository {
       'prescriptionNote': prescriptionNote,
       'closedAt': Timestamp.now(),
     });
+
+    final consult = await getConsult(consultId);
+    if (consult != null && consult.careCaseId != null && consult.careCaseId!.isNotEmpty) {
+      final updates = <String, dynamic>{
+        'isDoctorConsulted': true,
+        'updatedAt': Timestamp.now(),
+      };
+      if (prescriptionNote != null && prescriptionNote.isNotEmpty) {
+        updates['doctorClinicalNote'] = prescriptionNote;
+      }
+      await _db.collection(FirestorePaths.careCases).doc(consult.careCaseId).update(updates);
+    }
   }
 
   // ── Messages ──────────────────────────────────────────────────────────────

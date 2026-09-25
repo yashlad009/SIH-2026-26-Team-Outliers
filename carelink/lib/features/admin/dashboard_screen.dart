@@ -24,6 +24,7 @@ import '../patient_record/patient_record_screen.dart';
 import '../settings/settings_screen.dart';
 import 'charts/case_volume_chart.dart';
 import 'charts/triage_distribution_chart.dart';
+import 'control_room_screen.dart';
 
 class AdminDashboardScreen extends ConsumerStatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -951,136 +952,7 @@ class _AdminFacilitiesTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final patientsAsync = ref.watch(patientListProvider);
-    final referralsAsync = ref.watch(allReferralsProvider);
-    final stockAsync = ref.watch(medicineStockProvider);
-
-    final totalPatients = patientsAsync.valueOrNull?.length ?? 0;
-    final totalReferrals = referralsAsync.valueOrNull?.length ?? 0;
-    final lowStockItems = stockAsync.valueOrNull
-            ?.where((m) =>
-                m.currentQuantity <= m.minimumQuantity ||
-                m.status == StockStatus.low ||
-                m.status == StockStatus.outOfStock)
-            .length ??
-        0;
-
-    final facilities = [
-      {
-        'name': 'Primary Health Center — Rampur',
-        'type': 'PHC',
-        'district': 'Pune Rural',
-        'patients': totalPatients > 0 ? (totalPatients * 0.6).round() : 12,
-        'referrals': totalReferrals > 0 ? (totalReferrals * 0.5).round() : 3,
-        'lowStock': lowStockItems > 0 ? lowStockItems : 0,
-      },
-      {
-        'name': 'Rural Hospital — Chakan',
-        'type': 'Rural Hospital',
-        'district': 'Pune Rural',
-        'patients': totalPatients > 0 ? (totalPatients * 0.3).round() : 8,
-        'referrals': totalReferrals > 0 ? (totalReferrals * 0.3).round() : 2,
-        'lowStock': 0,
-      },
-      {
-        'name': 'District Hospital — Pune',
-        'type': 'District Hospital',
-        'district': 'Pune',
-        'patients': totalPatients > 0 ? (totalPatients * 0.1).round() : 4,
-        'referrals': totalReferrals > 0 ? (totalReferrals * 0.2).round() : 1,
-        'lowStock': 0,
-      },
-    ];
-
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        Text('Healthcare Facilities Overview',
-            style: Theme.of(context).textTheme.titleLarge),
-        const SizedBox(height: 4),
-        const Text('Operational status across registered facilities',
-            style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
-        const SizedBox(height: 16),
-        ...facilities.map(
-          (f) => Card(
-            margin: const EdgeInsets.only(bottom: 12),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: AppColors.primaryContainer,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Icon(Icons.local_hospital,
-                            color: AppColors.primary, size: 22),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              f['name'] as String,
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.bold, fontSize: 14),
-                            ),
-                            Text(
-                              '${f['type']} · ${f['district']}',
-                              style: const TextStyle(
-                                  color: AppColors.textSecondary, fontSize: 12),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  const Divider(height: 1),
-                  const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      _facilityStat('Registered Patients', '${f['patients']}'),
-                      _facilityStat('Active Referrals', '${f['referrals']}'),
-                      _facilityStat('Low Stock Items', '${f['lowStock']}',
-                          color: (f['lowStock'] as int) > 0
-                              ? AppColors.riskMedium
-                              : AppColors.riskLow),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _facilityStat(String label, String value, {Color? color}) {
-    return Column(
-      children: [
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: color ?? AppColors.textPrimary,
-          ),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          label,
-          style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
-        ),
-      ],
-    );
+    return const ControlRoomScreen(embedded: true);
   }
 }
 

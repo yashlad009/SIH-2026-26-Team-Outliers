@@ -13,6 +13,8 @@ class FirestorePaths {
   static const String diagnosticTests = 'diagnostic_tests';
   static const String followUpTasks = 'follow_up_tasks';
   static const String timelineEvents = 'timeline_events';
+  static const String careCases = 'care_cases';
+  static const String facilities = 'facilities';
 
   // ── Sub-collections ───────────────────────────────────────────────────────
   /// Chat messages sub-collection under a consult_request doc
@@ -32,4 +34,5 @@ class FirestorePaths {
   static String patientDoc(String patientId) => '$patients/$patientId';
   static String referralDoc(String referralId) => '$referrals/$referralId';
   static String consultDoc(String consultId) => '$consultRequests/$consultId';
+  static String careCaseDoc(String careCaseId) => '$careCases/$careCaseId';
 }
