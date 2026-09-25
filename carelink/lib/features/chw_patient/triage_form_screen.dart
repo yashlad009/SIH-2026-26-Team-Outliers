@@ -148,7 +148,7 @@ class _TriageFormScreenState extends ConsumerState<TriageFormScreen> {
         spO2: int.tryParse(_spO2Ctrl.text),
         heartRate: int.tryParse(_hrCtrl.text),
       );
-      setState(() => _aiNote = note ?? 'AI unavailable. Pass --dart-define=GEMINI_API_KEY=...');
+      setState(() => _aiNote = note ?? 'AI note unavailable — optional demo feature.');
       if (_savedTriageId != null && note != null) {
         await PatientRepository().updateTriageAiNote(_savedTriageId!, note);
       }

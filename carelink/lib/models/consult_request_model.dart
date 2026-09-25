@@ -107,6 +107,7 @@ class ConsultRequestModel {
   final String reason;
   final UrgencyLevel urgency;
   final ConsultStatus status;
+  final String? careCaseId;
   final String? triageResultId;
   final RiskLevel? triageRisk;
   final String? prescriptionNote; // Doctor's prescription after consult
@@ -125,6 +126,7 @@ class ConsultRequestModel {
     required this.reason,
     required this.urgency,
     required this.status,
+    this.careCaseId,
     this.triageResultId,
     this.triageRisk,
     this.prescriptionNote,
@@ -146,6 +148,7 @@ class ConsultRequestModel {
       reason: data['reason'] as String? ?? '',
       urgency: UrgencyLevelX.fromString(data['urgency'] as String? ?? 'routine'),
       status: ConsultStatusX.fromString(data['status'] as String? ?? 'pending'),
+      careCaseId: data['careCaseId'] as String?,
       triageResultId: data['triageResultId'] as String?,
       triageRisk: data['triageRisk'] != null
           ? RiskLevelX.fromString(data['triageRisk'] as String)
@@ -167,6 +170,7 @@ class ConsultRequestModel {
         'reason': reason,
         'urgency': urgency.name,
         'status': status.name,
+        'careCaseId': careCaseId,
         'triageResultId': triageResultId,
         'triageRisk': triageRisk?.name,
         'prescriptionNote': prescriptionNote,
@@ -194,6 +198,7 @@ class ConsultRequestModel {
         reason: reason,
         urgency: urgency,
         status: status ?? this.status,
+        careCaseId: careCaseId,
         triageResultId: triageResultId,
         triageRisk: triageRisk,
         prescriptionNote: prescriptionNote ?? this.prescriptionNote,

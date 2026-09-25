@@ -44,6 +44,35 @@ class FollowUpRepository {
       'isDone': true,
       'completedAt': Timestamp.now(),
     });
+
+    final doc = await _col.doc(taskId).get();
+    if (!doc.exists) return;
+    final task = FollowUpTaskModel.fromFirestore(doc);
+
+    if (task.careCaseId != null && task.careCaseId!.isNotEmpty) {
+      final careCaseDoc = await _db.collection(FirestorePaths.careCases).doc(task.careCaseId).get();
+      if (careCaseDoc.exists) {
+        final data = careCaseDoc.data()!;
+        final diagStatus = (data['diagnosticsStatus'] as Map<String, dynamic>?)?.map((k, v) => MapEntry(k, v.toString())) ?? {};
+        final medStatus = (data['medicinesStatus'] as Map<String, dynamic>?)?.map((k, v) => MapEntry(k, v.toString())) ?? {};
+        final isDoctorConsulted = data['isDoctorConsulted'] as bool? ?? false;
+
+        final allDiagDone = diagStatus.values.every((v) => v == 'completed');
+        final allMedsDispensed = medStatus.values.every((v) => v == 'dispensed');
+
+        final updates = <String, dynamic>{
+          'isFollowUpDone': true,
+          'updatedAt': Timestamp.now(),
+        };
+
+        // ONLY auto-complete if ALL required steps (doctor consult, diagnostics, medicines, follow-up) are complete
+        if (isDoctorConsulted && allDiagDone && allMedsDispensed) {
+          updates['status'] = 'completed';
+        }
+
+        await _db.collection(FirestorePaths.careCases).doc(task.careCaseId).update(updates);
+      }
+    }
   }
 
   Future<void> markUndone(String taskId) async {
@@ -51,5 +80,17 @@ class FollowUpRepository {
       'isDone': false,
       'completedAt': null,
     });
+
+    final doc = await _col.doc(taskId).get();
+    if (!doc.exists) return;
+    final task = FollowUpTaskModel.fromFirestore(doc);
+
+    if (task.careCaseId != null && task.careCaseId!.isNotEmpty) {
+      await _db.collection(FirestorePaths.careCases).doc(task.careCaseId).update({
+        'isFollowUpDone': false,
+        'status': 'inProgress',
+        'updatedAt': Timestamp.now(),
+      });
+    }
   }
 }

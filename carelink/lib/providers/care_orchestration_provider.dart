@@ -57,6 +57,21 @@ class CareOrchestrationEngine {
     required String chwName,
   }) async {
     final db = FirebaseFirestore.instance;
+    final now = DateTime.now();
+
+    // 0. Check Emergency Criteria (High Risk != Emergency; Emergency requires critical vital failure)
+    final bool isEmergency = (triage.spO2 != null && triage.spO2! < 85) ||
+        (triage.bpSystolic != null && triage.bpSystolic! >= 180) ||
+        triage.symptoms.contains('Unconsciousness') ||
+        triage.symptoms.contains('Severe chest pain with collapse');
+
+    final String? emergencyReason = isEmergency
+        ? (triage.spO2 != null && triage.spO2! < 85
+            ? 'Critically low SpO₂ (${triage.spO2}%) requires immediate emergency stabilization.'
+            : (triage.bpSystolic != null && triage.bpSystolic! >= 180
+                ? 'Hypertensive Crisis (BP ${triage.bpSystolic} mmHg) requires emergency care.'
+                : 'Severe critical symptoms require immediate emergency transport.'))
+        : null;
 
     // 1. Identify required specialty
     final requiredSpecialty = SmartAssignmentService.identifyRequiredSpecialty(
@@ -78,9 +93,9 @@ class CareOrchestrationEngine {
     final assignment = SmartAssignmentService.selectBestDoctor(
       availableDoctors: users,
       requiredSpecialty: requiredSpecialty,
-      urgency: triage.riskLevel == RiskLevel.high
+      urgency: isEmergency
           ? UrgencyLevel.emergency
-          : triage.riskLevel == RiskLevel.medium
+          : triage.riskLevel == RiskLevel.high
               ? UrgencyLevel.urgent
               : UrgencyLevel.routine,
     );
@@ -115,6 +130,17 @@ class CareOrchestrationEngine {
       requiredMedicines.add('Essential Medical Kit');
     }
 
+    // Action Items Tracking Initialization
+    final diagStatusMap = <String, String>{};
+    for (final d in requiredDiagnostics) {
+      diagStatusMap[d] = 'pending';
+    }
+
+    final medStatusMap = <String, String>{};
+    for (final m in requiredMedicines) {
+      medStatusMap[m] = 'pending';
+    }
+
     // 4. Adaptive Care Routing
     final routeRec = AdaptiveRoutingService.computeRecommendedRoute(
       facilities: facilities,
@@ -132,10 +158,8 @@ class CareOrchestrationEngine {
       facilityName: routeRec.recommendedFacility.name,
     );
 
-    final now = DateTime.now();
-
     // Construct Care Case
-    final careCase = CareCaseModel(
+    final initialCareCase = CareCaseModel(
       id: '',
       patientId: patient.id,
       patientName: patient.name,
@@ -155,6 +179,10 @@ class CareOrchestrationEngine {
       riskLevel: triage.riskLevel,
       riskScore: triage.riskScore,
       riskFlags: triage.riskFlags,
+      isEmergency: isEmergency,
+      emergencyReason: emergencyReason,
+      diagnosticsStatus: diagStatusMap,
+      medicinesStatus: medStatusMap,
       requiredSpecialty: requiredSpecialty,
       assignedDoctorUid: assignment.assignedDoctor?.uid,
       assignedDoctorName: assignment.assignedDoctor?.displayName,
@@ -176,10 +204,35 @@ class CareOrchestrationEngine {
       updatedAt: now,
     );
 
-    // Save Care Case to Firestore
-    final careCaseId = await CareCaseRepository().createCareCase(careCase);
+    // Save Care Case to Firestore first to obtain careCaseId
+    final careCaseId = await CareCaseRepository().createCareCase(initialCareCase);
 
-    // 6. Automated Follow-up Task Creation
+    // 6. Create Real Consultation Request linked by careCaseId
+    final consultReq = ConsultRequestModel(
+      id: '',
+      patientId: patient.id,
+      patientName: patient.name,
+      chwUid: chwUid,
+      chwName: chwName,
+      doctorUid: assignment.assignedDoctor?.uid,
+      doctorName: assignment.assignedDoctor?.displayName,
+      reason: 'Care Orchestration: ${triage.chiefComplaint} ($requiredSpecialty)',
+      urgency: isEmergency
+          ? UrgencyLevel.emergency
+          : triage.riskLevel == RiskLevel.high
+              ? UrgencyLevel.urgent
+              : UrgencyLevel.routine,
+      status: ConsultStatus.pending,
+      careCaseId: careCaseId,
+      triageResultId: triage.id,
+      triageRisk: triage.riskLevel,
+      createdAt: now,
+    );
+
+    final consultReqRef = await db.collection(FirestorePaths.consultRequests).add(consultReq.toFirestore());
+    final consultRequestId = consultReqRef.id;
+
+    // 7. Automated Follow-up Task Creation linked by careCaseId
     final followUpTask = FollowUpTaskModel(
       id: '',
       patientId: patient.id,
@@ -191,19 +244,23 @@ class CareOrchestrationEngine {
       category: patient.age < 12 ? FollowUpCategory.child : FollowUpCategory.general,
       dueDate: now.add(const Duration(days: 2)),
       isDone: false,
+      careCaseId: careCaseId,
       createdByUid: chwUid,
       createdAt: now,
     );
     final taskId = await FollowUpRepository().createTask(followUpTask);
 
-    final finalCareCase = careCase.copyWith(
+    final finalCareCase = initialCareCase.copyWith(
+      consultRequestId: consultRequestId,
       followUpTaskId: taskId,
       followUpDueDate: followUpTask.dueDate,
     );
-    await db
-        .collection(FirestorePaths.careCases)
-        .doc(careCaseId)
-        .update({'followUpTaskId': taskId, 'followUpDueDate': Timestamp.fromDate(followUpTask.dueDate)});
+
+    await db.collection(FirestorePaths.careCases).doc(careCaseId).update({
+      'consultRequestId': consultRequestId,
+      'followUpTaskId': taskId,
+      'followUpDueDate': Timestamp.fromDate(followUpTask.dueDate),
+    });
 
     return finalCareCase;
   }

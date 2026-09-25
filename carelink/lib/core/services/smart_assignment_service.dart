@@ -88,14 +88,23 @@ class SmartAssignmentService {
         assignedDoctor: null,
         requiredSpecialty: requiredSpecialty,
         assignmentReason:
-            '⚠️ No on-duty doctors available in network. Escalated to District Control Room for urgent assignment.',
+            '⚠️ No doctors available in network. Escalated to District Control Room.',
         isEscalated: true,
       );
     }
 
-    // Filter on-duty doctors first
-    final onDuty = doctorsOnly.where((d) => d.isOnDuty).toList();
-    final pool = onDuty.isNotEmpty ? onDuty : doctorsOnly;
+    // Filter strictly ON-DUTY doctors
+    final pool = doctorsOnly.where((d) => d.isOnDuty).toList();
+
+    if (pool.isEmpty) {
+      return SmartAssignmentResult(
+        assignedDoctor: null,
+        requiredSpecialty: requiredSpecialty,
+        assignmentReason:
+            '⚠️ No suitable on-duty doctor available currently. Escalated to Control Room / Teleconsultation.',
+        isEscalated: true,
+      );
+    }
 
     UserModel? bestDoctor;
     double highestScore = -9999.0;
@@ -140,7 +149,7 @@ class SmartAssignmentService {
         assignedDoctor: null,
         requiredSpecialty: requiredSpecialty,
         assignmentReason:
-            '⚠️ All doctors currently overloaded. Escalated to District Duty Officer.',
+            '⚠️ All available on-duty doctors are overloaded. Escalated to District Duty Officer.',
         isEscalated: true,
       );
     }
@@ -151,5 +160,10 @@ class SmartAssignmentService {
       assignmentReason: bestReason,
       isEscalated: false,
     );
+  }
+
+  /// Returns all eligible doctors for manual re-assignment selection
+  static List<UserModel> getEligibleDoctors(List<UserModel> allUsers) {
+    return allUsers.where((u) => u.role == UserRole.doctor).toList();
   }
 }

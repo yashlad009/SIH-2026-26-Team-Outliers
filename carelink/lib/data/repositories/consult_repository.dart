@@ -96,6 +96,17 @@ class ConsultRepository {
       'doctorName': doctorName,
       'acceptedAt': Timestamp.now(),
     });
+
+    final consult = await getConsult(consultId);
+    if (consult != null && consult.careCaseId != null && consult.careCaseId!.isNotEmpty) {
+      await _db.collection(FirestorePaths.careCases).doc(consult.careCaseId).update({
+        'isDoctorConsulted': true,
+        'assignedDoctorUid': doctorUid,
+        'assignedDoctorName': doctorName,
+        'status': 'inProgress',
+        'updatedAt': Timestamp.now(),
+      });
+    }
   }
 
   Future<void> closeConsult({
@@ -107,6 +118,18 @@ class ConsultRepository {
       'prescriptionNote': prescriptionNote,
       'closedAt': Timestamp.now(),
     });
+
+    final consult = await getConsult(consultId);
+    if (consult != null && consult.careCaseId != null && consult.careCaseId!.isNotEmpty) {
+      final updates = <String, dynamic>{
+        'isDoctorConsulted': true,
+        'updatedAt': Timestamp.now(),
+      };
+      if (prescriptionNote != null && prescriptionNote.isNotEmpty) {
+        updates['doctorClinicalNote'] = prescriptionNote;
+      }
+      await _db.collection(FirestorePaths.careCases).doc(consult.careCaseId).update(updates);
+    }
   }
 
   // ── Messages ──────────────────────────────────────────────────────────────

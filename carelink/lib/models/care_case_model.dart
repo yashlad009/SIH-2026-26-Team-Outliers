@@ -64,6 +64,19 @@ class CareCaseModel {
   final int riskScore;
   final List<String> riskFlags;
 
+  // Emergency Escalation
+  final bool isEmergency;
+  final String? emergencyReason;
+
+  // Doctor Consultation & Decision Link
+  final String? consultRequestId;
+  final bool isDoctorConsulted;
+  final String? doctorClinicalNote;
+
+  // Action Items Tracking
+  final Map<String, String> diagnosticsStatus; // testName -> 'pending' | 'completed'
+  final Map<String, String> medicinesStatus;   // medicineName -> 'pending' | 'dispensed'
+
   // Smart Assignment
   final String? requiredSpecialty;
   final String? assignedDoctorUid;
@@ -113,6 +126,13 @@ class CareCaseModel {
     required this.riskLevel,
     required this.riskScore,
     this.riskFlags = const [],
+    this.isEmergency = false,
+    this.emergencyReason,
+    this.consultRequestId,
+    this.isDoctorConsulted = false,
+    this.doctorClinicalNote,
+    this.diagnosticsStatus = const {},
+    this.medicinesStatus = const {},
     this.requiredSpecialty,
     this.assignedDoctorUid,
     this.assignedDoctorName,
@@ -158,6 +178,17 @@ class CareCaseModel {
               ?.map((e) => e.toString())
               .toList() ??
           [],
+      isEmergency: data['isEmergency'] as bool? ?? false,
+      emergencyReason: data['emergencyReason'] as String?,
+      consultRequestId: data['consultRequestId'] as String?,
+      isDoctorConsulted: data['isDoctorConsulted'] as bool? ?? false,
+      doctorClinicalNote: data['doctorClinicalNote'] as String?,
+      diagnosticsStatus: (data['diagnosticsStatus'] as Map<String, dynamic>?)
+              ?.map((k, v) => MapEntry(k, v.toString())) ??
+          {},
+      medicinesStatus: (data['medicinesStatus'] as Map<String, dynamic>?)
+              ?.map((k, v) => MapEntry(k, v.toString())) ??
+          {},
       requiredSpecialty: data['requiredSpecialty'] as String?,
       assignedDoctorUid: data['assignedDoctorUid'] as String?,
       assignedDoctorName: data['assignedDoctorName'] as String?,
@@ -204,6 +235,13 @@ class CareCaseModel {
         'riskLevel': riskLevel.name,
         'riskScore': riskScore,
         'riskFlags': riskFlags,
+        'isEmergency': isEmergency,
+        'emergencyReason': emergencyReason,
+        'consultRequestId': consultRequestId,
+        'isDoctorConsulted': isDoctorConsulted,
+        'doctorClinicalNote': doctorClinicalNote,
+        'diagnosticsStatus': diagnosticsStatus,
+        'medicinesStatus': medicinesStatus,
         'requiredSpecialty': requiredSpecialty,
         'assignedDoctorUid': assignedDoctorUid,
         'assignedDoctorName': assignedDoctorName,
@@ -230,6 +268,13 @@ class CareCaseModel {
       };
 
   CareCaseModel copyWith({
+    bool? isEmergency,
+    String? emergencyReason,
+    String? consultRequestId,
+    bool? isDoctorConsulted,
+    String? doctorClinicalNote,
+    Map<String, String>? diagnosticsStatus,
+    Map<String, String>? medicinesStatus,
     String? requiredSpecialty,
     String? assignedDoctorUid,
     String? assignedDoctorName,
@@ -265,6 +310,13 @@ class CareCaseModel {
         riskLevel: riskLevel,
         riskScore: riskScore,
         riskFlags: riskFlags,
+        isEmergency: isEmergency ?? this.isEmergency,
+        emergencyReason: emergencyReason ?? this.emergencyReason,
+        consultRequestId: consultRequestId ?? this.consultRequestId,
+        isDoctorConsulted: isDoctorConsulted ?? this.isDoctorConsulted,
+        doctorClinicalNote: doctorClinicalNote ?? this.doctorClinicalNote,
+        diagnosticsStatus: diagnosticsStatus ?? this.diagnosticsStatus,
+        medicinesStatus: medicinesStatus ?? this.medicinesStatus,
         requiredSpecialty: requiredSpecialty ?? this.requiredSpecialty,
         assignedDoctorUid: assignedDoctorUid ?? this.assignedDoctorUid,
         assignedDoctorName: assignedDoctorName ?? this.assignedDoctorName,
